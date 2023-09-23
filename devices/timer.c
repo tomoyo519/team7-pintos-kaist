@@ -9,9 +9,10 @@
 #include "threads/thread.h"
 
 /* See [8254] for hardware details of the 8254 timer chip. */
-
-#if TIMER_FREQ < 19
-#error 8254 timer requires TIMER_FREQ >= 19
+//전처리기 지시자
+#if TIMER_FREQ < 19 //해당 조건을 만족하면
+//컴파일 에러를 발생시킴
+#error 8254 timer requires TIMER_FREQ >= 19 
 #endif
 #if TIMER_FREQ > 1000
 #error TIMER_FREQ <= 1000 recommended
@@ -28,17 +29,25 @@ static intr_handler_func timer_interrupt;
 static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
 static void real_time_sleep (int64_t num, int32_t denom);
-
+void timer_print_stats(void);
 /* Sets up the 8254 Programmable Interval Timer (PIT) to
    interrupt PIT_FREQ times per second, and registers the
-   corresponding interrupt. */
+   corresponding interrupt.
+   -----------------------------------------------------------
+	Korean:8254 programmable interval timer(PIT)를 설정하여 초당 PIT_FREQ 번 인터럽트를 발생시키고
+	해당 인터럽트를 등록한다.*/
 void
 timer_init (void) {
 	/* 8254 input frequency divided by TIMER_FREQ, rounded to
-	   nearest. */
+	   nearest. 
+	   --------------------------------------------------------
+	   korean : 8254의 input frequency를 TIMER_FREQ로 나누고, 가장 가까운 값으로 반올림한다.
+	   8254 타이머의 입력 주파수를 TIMER_FREQ 값으로 조절하려는 의도를 설명한다. 
+	   이를 통해 원하는 타이밍 빈도로 타이머를 설정할 수 있다.*/
 	uint16_t count = (1193180 + TIMER_FREQ / 2) / TIMER_FREQ;
-
-	outb (0x43, 0x34);    /* CW: counter 0, LSB then MSB, mode 2, binary. */
+	/*outb(port, data)*/
+	//0x43 : PIT, 0x34 : PIT의 스펙
+	outb (0x43, 0x34);    //타이머를 깨운다 /* CW: counter 0, LSB then MSB, mode 2, binary. */
 	outb (0x40, count & 0xff);
 	outb (0x40, count >> 8);
 
@@ -81,20 +90,29 @@ timer_ticks (void) {
 }
 
 /* Returns the number of timer ticks elapsed since THEN, which
-   should be a value once returned by timer_ticks(). */
+   should be a value once returned by timer_ticks(). 
+   */
 int64_t
 timer_elapsed (int64_t then) {
 	return timer_ticks () - then;
 }
 
 /* Suspends execution for approximately TICKS timer ticks. */
+//timer가 적어도 x번 tic할때까지 thread 호출의 실행을 일시 중단한다. 시스템이 idle(다음 thread가 없는) 상태가 아니면,
+//thread가 정확히 x번의 tick이 발생한 직후에 wake up할 필요가 없다.
+//thread가 적절한 시간 동안 대기한 후 ready queue에 놓이게 하라
+
+//현재 스레드를 tick시간동안 잠재우는 함수
 void
 timer_sleep (int64_t ticks) {
-	int64_t start = timer_ticks ();
+	int64_t start = timer_ticks (); //현재 tic을 start에 넣어서
 
-	ASSERT (intr_get_level () == INTR_ON);
-	while (timer_elapsed (start) < ticks)
+	ASSERT (intr_get_level () == INTR_ON); //interrupt 상태인지 확인
+	
+	while (timer_elapsed (start) < ticks) //start로 부터 시간이 얼마나 지났는지
+
 		thread_yield ();
+	thread_print_stats();
 }
 
 /* Suspends execution for approximately MS milliseconds. */
