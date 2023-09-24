@@ -105,14 +105,19 @@ timer_elapsed (int64_t then) {
 //현재 스레드를 tick시간동안 잠재우는 함수
 void
 timer_sleep (int64_t ticks) {
-	int64_t start = timer_ticks (); //현재 tic을 start에 넣어서
-
-	ASSERT (intr_get_level () == INTR_ON); //interrupt 상태인지 확인
+	// int64_t start = timer_ticks (); //현재 tic을 start에 넣어서
 	
-	while (timer_elapsed (start) < ticks) //start로 부터 시간이 얼마나 지났는지
+	ASSERT (intr_get_level () == INTR_ON); //interrupt 상태인지 확인
+	// printf("<1>\n");
+	// while (timer_elapsed (start) < ticks) //start로 부터 시간이 얼마나 지났는지
 
-		thread_yield ();
-	thread_print_stats();
+	// 	thread_yield ();
+	// printf("Switch : %d\n", swch);
+	
+	// printf("in 'while' ... running\n");
+	make_thread_sleep(timer_ticks () + ticks); //현재 시간부터 재워야할 tick을 더해주어야함
+	// printf("timer_sleep finish\n");
+	// thread_print_stats();
 }
 
 /* Suspends execution for approximately MS milliseconds. */
@@ -138,12 +143,13 @@ void
 timer_print_stats (void) {
 	printf ("Timer: %"PRId64" ticks\n", timer_ticks ());
 }
-
+
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED) {
 	ticks++;
 	thread_tick ();
+	make_thread_wakeup(ticks);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer
