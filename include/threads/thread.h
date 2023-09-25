@@ -14,8 +14,8 @@
 enum thread_status {
 	THREAD_RUNNING,     /* Running thread. */
 	THREAD_READY,       /* Not running but ready to run. */
-	THREAD_BLOCKED,     /* Waiting for an event to trigger. */
-	THREAD_DYING        /* About to be destroyed. */
+	THREAD_BLOCKED,     /* Waiting for an event to trigger. 실행 일시 정지 -> 다시 실행 가능*/
+	THREAD_DYING        /* About to be destroyed. 실행 종료 -> 다시 실행 불가*/
 };
 
 /* Thread identifier type.
@@ -24,8 +24,8 @@ typedef int tid_t;
 #define TID_ERROR ((tid_t) -1)          /* Error value for tid_t. */
 
 /* Thread priorities. */
-#define PRI_MIN 0                       /* Lowest priority. */
-#define PRI_DEFAULT 31                  /* Default priority. */
+#define PRI_MIN 0                       /* Lowest priority.  가장 낮은 우선순위 idle thread*/
+#define PRI_DEFAULT 31                  /* Default priority. 맨 처음 스레드를 생성했을때의 초기값*/
 #define PRI_MAX 63                      /* Highest priority. */
 
 /* A kernel thread or user process.
@@ -51,9 +51,9 @@ typedef int tid_t;
  *           |                                 |
  *           |                                 |
  *           +---------------------------------+
- *           |              magic              |
- *           |            intr_frame           |
- *           |                :                |
+ *           |              magic              | 스레드 스택 
+ *           |            intr_frame           | kernel stack에 데이터가 쌓이다가 데이터 오버플로우가 발생하는 것을 magic으로 확인
+ *           |                :                | magic을 넘어가면 스택 오버플로우
  *           |                :                |
  *           |               name              |
  *           |              status             |
@@ -91,10 +91,9 @@ struct thread {
 	enum thread_status status;          /* Thread state. */
 	char name[16];                      /* Name (for debugging purposes). */
 	int priority;                       /* Priority. */
-
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
-
+	int64_t thread_tick_count;
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
@@ -132,6 +131,8 @@ const char *thread_name (void);
 
 void thread_exit (void) NO_RETURN;
 void thread_yield (void);
+void make_thread_sleep(int64_t ticks);
+void make_thread_wakeup(int64_t ticks);
 
 int thread_get_priority (void);
 void thread_set_priority (int);

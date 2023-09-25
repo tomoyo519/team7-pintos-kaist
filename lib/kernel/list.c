@@ -53,7 +53,8 @@ is_tail (struct list_elem *elem) {
 	return elem != NULL && elem->prev != NULL && elem->next == NULL;
 }
 
-/* Initializes LIST as an empty list. */
+/* Initializes LIST as an empty list. 
+ 양방향 연결 리스트 : head, tail -> 접근하려고 필요*/
 void
 list_init (struct list *list) {
 	ASSERT (list != NULL);
@@ -415,6 +416,10 @@ list_sort (struct list *list, list_less_func *less, void *aux) {
 /* Inserts ELEM in the proper position in LIST, which must be
    sorted according to LESS given auxiliary data AUX.
    Runs in O(n) average case in the number of elements in LIST. */
+
+//list_less_func(비교인자) -> 구현해야함
+//void *aux = 선택적인 보조 인자
+//리스트가 비어있어도 정상작동함
 void
 list_insert_ordered (struct list *list, struct list_elem *elem,
 		list_less_func *less, void *aux) {
@@ -425,10 +430,13 @@ list_insert_ordered (struct list *list, struct list_elem *elem,
 	ASSERT (less != NULL);
 
 	for (e = list_begin (list); e != list_end (list); e = list_next (e))
+	//elem이 e보다 작다면 조건을 만족했으므로 반복문을 탈출
 		if (less (elem, e, aux))
 			break;
 	return list_insert (e, elem);
 }
+
+
 
 /* Iterates through LIST and removes all but the first in each
    set of adjacent elements that are equal according to LESS

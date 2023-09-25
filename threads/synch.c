@@ -40,13 +40,18 @@
    decrement it.
 
    - up or "V": increment the value (and wake up one waiting
-   thread, if any). */
+   thread, if any). 
+   SEMA 세마포어를 VALUE 값으로 초기화한다. 세마포어는 그것을 조작하기 위한 두 개의 원자적 연산자와 함께하는 음수가 아닌 정수이다:
+
+down 또는 "P": 값이 양수가 될 때까지 기다린 후, 그 값을 감소시킨다.
+
+up 또는 "V": 값을 증가시킨다 (그리고 기다리는 스레드가 있다면 하나를 깨운다).*/
 void
 sema_init (struct semaphore *sema, unsigned value) {
 	ASSERT (sema != NULL);
 
 	sema->value = value;
-	list_init (&sema->waiters);
+	list_init (&sema->waiters); //waiter를 초기화
 }
 
 /* Down or "P" operation on a semaphore.  Waits for SEMA's value
@@ -56,7 +61,16 @@ sema_init (struct semaphore *sema, unsigned value) {
    interrupt handler.  This function may be called with
    interrupts disabled, but if it sleeps then the next scheduled
    thread will probably turn interrupts back on. This is
-   sema_down function. */
+   sema_down function. 
+   세마포어에 대한 Down 또는 "P" 연산이다. SEMA의 값이 양수가 될 때까지 기다린 후 원자적으로 그 값을 감소시킨다.
+
+	이 함수는 슬립(sleep) 상태가 될 수 있으므로, 인터럽트 핸들러 내에서 호출되어서는 안 된다. 
+	이 함수는 인터럽트가 비활성화된 상태에서 호출될 수 있지만, 
+	만약 이 함수가 슬립 상태가 된다면, 다음에 스케줄링될 스레드는 아마도 인터럽트를 다시 활성화시킬 것이다. 이것은 sema_down 함수이다.
+	
+	스레드를 blocked로 만들어준다
+	*/
+
 void
 sema_down (struct semaphore *sema) {
 	enum intr_level old_level;
@@ -64,13 +78,16 @@ sema_down (struct semaphore *sema) {
 	ASSERT (sema != NULL);
 	ASSERT (!intr_context ());
 
-	old_level = intr_disable ();
-	while (sema->value == 0) {
-		list_push_back (&sema->waiters, &thread_current ()->elem);
-		thread_block ();
+	old_level = intr_disable (); //인터럽트 비활
+	while (sema->value == 0) { //sema 값이 0이면 무한 루프를 돈다
+	//현재 러닝 중인 스레드(자기자신)를 웨이트 리스트에 넣고 블락시킴
+	//해당 스레드는 블락 상태가 되고, 다른 스레드로 스케줄링이 됨
+	//sema_up이 호출되는 순간 웨이트 리스트에 있는 것들 중 맨앞에 있는 것을 unblock시키고 sema 값을 증가시킴
+		list_push_back (&sema->waiters, &thread_current ()->elem); //ELEM을 LIST의 끝에 삽입하여, 그것이 LIST의 마지막 요소가 된다.
+		thread_block (); //
 	}
-	sema->value--;
-	intr_set_level (old_level);
+	sema->value--; //value 감소 시키고
+	intr_set_level (old_level); //이전 인터럽트 상태를 인자로 넣어서(원상복귀)
 }
 
 /* Down or "P" operation on a semaphore, but only if the
@@ -86,9 +103,9 @@ sema_try_down (struct semaphore *sema) {
 	ASSERT (sema != NULL);
 
 	old_level = intr_disable ();
-	if (sema->value > 0)
+	if (sema->value > 0) //value가 0이상이면
 	{
-		sema->value--;
+		sema->value--; //value감소시키고 
 		success = true;
 	}
 	else
@@ -109,10 +126,10 @@ sema_up (struct semaphore *sema) {
 	ASSERT (sema != NULL);
 
 	old_level = intr_disable ();
-	if (!list_empty (&sema->waiters))
-		thread_unblock (list_entry (list_pop_front (&sema->waiters),
-					struct thread, elem));
-	sema->value++;
+	if (!list_empty (&sema->waiters)) //waiters에 thread가 있다면
+		thread_unblock (list_entry (list_pop_front (&sema->waiters), //waiters에서 popfront한 thread의 struct를 가지고 가서 unblock
+					struct thread, elem)); //블락된 스레드를 러닝 상태로 바꿔줌
+	sema->value++; //sema 구조체에서 value를 ++
 	intr_set_level (old_level);
 }
 
@@ -123,7 +140,7 @@ static void sema_test_helper (void *sema_);
    what's going on. */
 void
 sema_self_test (void) {
-	struct semaphore sema[2];
+	struct semaphore sema[2]; //세마포어 두개
 	int i;
 
 	printf ("Testing semaphores...");
@@ -132,8 +149,8 @@ sema_self_test (void) {
 	thread_create ("sema-test", PRI_DEFAULT, sema_test_helper, &sema);
 	for (i = 0; i < 10; i++)
 	{
-		sema_up (&sema[0]);
-		sema_down (&sema[1]);
+		sema_up (&sema[0]); //첫번째 세마포어는 계속 value를 up해주고 -> waiters에서 pop하고 unblock
+		sema_down (&sema[1]); //두번째 세마포어는 계속 value를 down해준다 -> waiters에 계속 넣어준다
 	}
 	printf ("done.\n");
 }
@@ -146,11 +163,11 @@ sema_test_helper (void *sema_) {
 
 	for (i = 0; i < 10; i++)
 	{
-		sema_down (&sema[0]);
+		sema_down (&sema[0]); //반대로 
 		sema_up (&sema[1]);
 	}
 }
-
+
 /* Initializes LOCK.  A lock can be held by at most a single
    thread at any given time.  Our locks are not "recursive", that
    is, it is an error for the thread currently holding a lock to
@@ -166,6 +183,14 @@ sema_test_helper (void *sema_) {
    acquire and release it.  When these restrictions prove
    onerous, it's a good sign that a semaphore should be used,
    instead of a lock. */
+/*락의 특징 
+  1. 락은 한번에 하나의 스레드만 소유할 수 있다.
+  2. 현재 락을 소유하고 있는 스레드가 락을 소유하려 시도 하는것은 오류
+  3. 락은 초기값이 1이다
+  4. 락은 동일한 스레드가 락을 해제하고 획득할수있다.
+  세마포어의 특징
+  1. 세마포어는 1 이상의 값을 가질 수 있다.세마포어의 value는 동시에 수행될 수 있는 최대 작업의 수
+  2. 세마포어는 소유자가 없다. 즉 하나의 스레드가 세마포어를 down하고 다른 스레드가 up할 수 있다.*/
 void
 lock_init (struct lock *lock) {
 	ASSERT (lock != NULL);
@@ -182,14 +207,16 @@ lock_init (struct lock *lock) {
    interrupt handler.  This function may be called with
    interrupts disabled, but interrupts will be turned back on if
    we need to sleep. */
+   /*이미 락을 보유하고 있는 스레드는 락을 다시 소유하려 시도해서는 안된다.
+   인터럽트가 비활성화된 상태에서 이 함수가 호출되면 스레드가 sleep(block) 상태로 전환해야할때, 인터럽트는 다시 활성화된다.*/
 void
 lock_acquire (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (!intr_context ());
 	ASSERT (!lock_held_by_current_thread (lock));
 
-	sema_down (&lock->semaphore);
-	lock->holder = thread_current ();
+	sema_down (&lock->semaphore); //락안의 세마포어의 value를 down시킨다. -> wait리스트에 스레드를 넣고 block상태로 만든다
+	lock->holder = thread_current (); //현재 스레드가 lock을 가지고 있다.
 }
 
 /* Tries to acquires LOCK and returns true if successful or false
@@ -235,7 +262,7 @@ lock_held_by_current_thread (const struct lock *lock) {
 
 	return lock->holder == thread_current ();
 }
-
+
 /* One semaphore in a list. */
 struct semaphore_elem {
 	struct list_elem elem;              /* List element. */
@@ -279,9 +306,9 @@ cond_wait (struct condition *cond, struct lock *lock) {
 	ASSERT (cond != NULL);
 	ASSERT (lock != NULL);
 	ASSERT (!intr_context ());
-	ASSERT (lock_held_by_current_thread (lock));
+	ASSERT (lock_held_by_current_thread (lock)); //현재 스레드가 락을 보유한 상태면
 
-	sema_init (&waiter.semaphore, 0);
+	sema_init (&waiter.semaphore, 0); //
 	list_push_back (&cond->waiters, &waiter.elem);
 	lock_release (lock);
 	sema_down (&waiter.semaphore);
