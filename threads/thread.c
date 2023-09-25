@@ -192,8 +192,8 @@ tid_t thread_create(const char *name, int priority,
 {
 	struct thread *t;
 	tid_t tid;
-
-	ASSERT(function != NULL);
+	//function 인자는 thread가 생성되고 이 스레드가 시작할때 실행할 함수이다.
+	ASSERT(function != NULL); //유효한 함수 포인터를 가리키고 있어야 한다
 
 	/* Allocate thread. */
 	t = palloc_get_page(PAL_ZERO); // 페이지 할당받아서 스레드를 가리키게 만든다.
@@ -201,7 +201,7 @@ tid_t thread_create(const char *name, int priority,
 		return TID_ERROR;
 
 	/* Initialize thread. */
-	init_thread(t, name, priority);
+	init_thread(t, name, priority); //할당받은 우선순위로 init해준다
 	tid = t->tid = allocate_tid();
 
 	/* Call the kernel_thread if it scheduled.
@@ -260,19 +260,16 @@ void make_thread_sleep(int64_t ticks)
 
 void make_thread_wakeup(int64_t ticks)	
 {
-	if (!list_empty(&blocked_list)){
-		const struct thread *a = list_entry(list_front(&blocked_list), struct thread, elem);
 		
 		// 이렇게 구현하려면 순서대로 정렬해서 넣어줘야힘
-		if (a->thread_tick_count <= ticks)
+		while (!list_empty(&blocked_list) && list_entry(list_front(&blocked_list), struct thread, elem) -> thread_tick_count <= ticks)
 		{
-			list_pop_front(&blocked_list);
-			thread_unblock(a);
+			struct thread * t = list_entry(list_pop_front(&blocked_list), struct thread, elem);
+			// list_pop_front(&blocked_list);
+			thread_unblock(t);
 		}
 	}
 		
-		
-}
 
 static bool
 tick_less(const struct list_elem *a_, const struct list_elem *b_,
@@ -292,6 +289,7 @@ tick_less(const struct list_elem *a_, const struct list_elem *b_,
    it may expect that it can atomically unblock a thread and
    update other data. */
 /*blocked thread를 ready 상태로 바꾸고, ready queue에 넣어주는 함수*/
+/*ready list에 넣어줄때 우선순위로 넣어줌 이 함수 수정하거나, 새로 만들어야함*/
 void thread_unblock(struct thread *t)
 {
 	enum intr_level old_level;
@@ -300,6 +298,7 @@ void thread_unblock(struct thread *t)
 
 	old_level = intr_disable();			   // intr_disable return 값이 previous interrupt
 	ASSERT(t->status == THREAD_BLOCKED);   // thread blocked 상태면 다음 줄로 넘어감
+
 	list_push_back(&ready_list, &t->elem); // ready queue에 해당 스레드의 elem를 넣어줌
 	t->status = THREAD_READY;			   // 상태를 ready로 바꾸고
 	intr_set_level(old_level);			   // 이전 인터럽트 상태로 원상복귀 시켜준다.
