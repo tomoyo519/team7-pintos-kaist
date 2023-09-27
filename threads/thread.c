@@ -695,9 +695,5 @@ bool priority_cmp(const struct list_elem *a_, const struct list_elem *b_,
 	const struct thread *a = list_entry(a_, struct thread, elem);
 	const struct thread *b = list_entry(b_, struct thread, elem);
 
-	if (a->thread_tick_count == b->thread_tick_count) {
-		return a->priority >= b->priority;
-	}
-
-	return a->thread_tick_count < b->thread_tick_count;
+	return a->priority > b->priority;
 }
