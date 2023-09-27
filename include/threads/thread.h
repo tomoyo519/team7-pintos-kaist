@@ -136,6 +136,7 @@ void make_thread_wakeup(int64_t ticks);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+bool priority_cmp(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 
 int thread_get_nice (void);
 void thread_set_nice (int);

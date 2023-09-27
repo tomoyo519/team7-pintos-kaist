@@ -295,7 +295,7 @@ tick_less_priority_cmp(const struct list_elem *a_, const struct list_elem *b_,
 	const struct thread *b = list_entry(b_, struct thread, elem);
 
 	if (a->thread_tick_count == b->thread_tick_count) {
-		return a->priority > b->priority;
+		return a->priority >= b->priority;
 	}
 
 	return a->thread_tick_count < b->thread_tick_count;
@@ -321,7 +321,8 @@ void thread_unblock(struct thread *t)
 	old_level = intr_disable();			   // intr_disable return 값이 previous interrupt
 	ASSERT(t->status == THREAD_BLOCKED);   // thread blocked 상태면 다음 줄로 넘어감
 
-	list_push_back(&ready_list, &t->elem); // ready queue에 해당 스레드의 elem를 넣어줌
+	list_insert_ordered(&ready_list, &t->elem, priority_cmp, NULL);
+	// list_push_back(&ready_list, &t->elem); // ready queue에 해당 스레드의 elem를 넣어줌
 	t->status = THREAD_READY;			   // 상태를 ready로 바꾸고
 	intr_set_level(old_level);			   // 이전 인터럽트 상태로 원상복귀 시켜준다.
 }
@@ -388,7 +389,8 @@ void thread_yield(void)
 
 	old_level = intr_disable();					  // 인터럽트 비활
 	if (curr != idle_thread)					  // idle thread면 ready 중인 스레드가 없다
-		list_push_back(&ready_list, &curr->elem); // ready queue에 넣는다.
+		list_insert_ordered(&ready_list, &curr->elem, priority_cmp, NULL);
+		// list_push_back(&ready_list, &curr->elem); // ready queue에 넣는다.
 	do_schedule(THREAD_READY);					  // 뺏기는 과정이 do_schedule 현재 running 중인 thread를 ready queue에 넣어주고, ready queue에 있는 스레드를 실행시킨다.
 	intr_set_level(old_level);					  // 이전 interuppt로 복구
 }
@@ -685,4 +687,17 @@ allocate_tid(void)
 	lock_release(&tid_lock);
 
 	return tid;
+}
+
+bool priority_cmp(const struct list_elem *a_, const struct list_elem *b_,
+		  void *aux UNUSED)
+{
+	const struct thread *a = list_entry(a_, struct thread, elem);
+	const struct thread *b = list_entry(b_, struct thread, elem);
+
+	if (a->thread_tick_count == b->thread_tick_count) {
+		return a->priority >= b->priority;
+	}
+
+	return a->thread_tick_count < b->thread_tick_count;
 }
