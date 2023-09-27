@@ -66,6 +66,7 @@ static tid_t allocate_tid(void);
 // void make_thread_sleep(int64_t ticks);
 // void make_thread_wakeup(int64_t ticks);
 static bool tick_less(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
+static bool tick_less_priority_cmp(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -219,6 +220,11 @@ tid_t thread_create(const char *name, int priority,
 	/* Add to run queue. */
 	thread_unblock(t); // ready queue에 넣어준다.
 
+	// running 쓰레드보다 우선순위 더 높으면 yield
+	if (thread_current()->priority < t->priority) {
+		thread_yield();
+	}
+
 	return tid;
 }
 
@@ -253,7 +259,7 @@ void make_thread_sleep(int64_t ticks)
 
 	t->thread_tick_count = ticks;
 	t->status = THREAD_BLOCKED;
-	list_insert_ordered(&blocked_list, &(t->elem), tick_less, NULL);
+	list_insert_ordered(&blocked_list, &(t->elem), tick_less_priority_cmp, NULL);
 	schedule();
 	intr_set_level(old_level);
 }
@@ -280,6 +286,22 @@ tick_less(const struct list_elem *a_, const struct list_elem *b_,
 
 	return a->thread_tick_count < b->thread_tick_count;
 }
+
+static bool
+tick_less_priority_cmp(const struct list_elem *a_, const struct list_elem *b_,
+		  void *aux UNUSED)
+{
+	const struct thread *a = list_entry(a_, struct thread, elem);
+	const struct thread *b = list_entry(b_, struct thread, elem);
+
+	if (a->thread_tick_count == b->thread_tick_count) {
+		return a->priority > b->priority;
+	}
+
+	return a->thread_tick_count < b->thread_tick_count;
+}
+
+
 /* Transitions a blocked thread T to the ready-to-run state.
    This is an error if T is not blocked.  (Use thread_yield() to
    make the running thread ready.)
@@ -375,6 +397,7 @@ void thread_yield(void)
 void thread_set_priority(int new_priority)
 {
 	thread_current()->priority = new_priority;
+	thread_yield();
 }
 
 /* Returns the current thread's priority. */
