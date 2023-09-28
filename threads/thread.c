@@ -67,6 +67,8 @@ static tid_t allocate_tid(void);
 // void make_thread_wakeup(int64_t ticks);
 static bool tick_less(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 static bool tick_less_priority_cmp(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
+static bool ready_list_cmp(const struct list_elem *a_, const struct list_elem *b_,
+		  void *aux UNUSED);
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -495,6 +497,7 @@ init_thread(struct thread *t, const char *name, int priority)
 	ASSERT(name != NULL);
 
 	memset(t, 0, sizeof *t);						   // 0으로 초기화하고
+	list_init(&t->donations);
 	t->status = THREAD_BLOCKED;						   // blocked 상태로(맨처음 상태가 blocked 상태)
 	strlcpy(t->name, name, sizeof t->name);			   // 인자로 받은 이름을 스레드 이름으로 하는것
 	t->tf.rsp = (uint64_t)t + PGSIZE - sizeof(void *); // 스택 포인터 설정
@@ -696,4 +699,77 @@ bool priority_cmp(const struct list_elem *a_, const struct list_elem *b_,
 	const struct thread *b = list_entry(b_, struct thread, elem);
 
 	return a->priority > b->priority;
+}
+
+bool priority_cmp_for_done_max(const struct list_elem *a_, const struct list_elem *b_,
+		  void *aux UNUSED)
+{
+	const struct thread *a = list_entry(a_, struct thread, d_elem);
+	const struct thread *b = list_entry(b_, struct thread, d_elem);
+
+	return a->priority < b->priority;
+}
+
+bool priority_cmp_for_waiters_max(const struct list_elem *a_, const struct list_elem *b_,
+		  void *aux UNUSED)
+{
+	const struct thread *a = list_entry(a_, struct thread, elem);
+	const struct thread *b = list_entry(b_, struct thread, elem);
+
+	return a->priority < b->priority;
+}
+
+void sort_ready_list(void) {
+	list_sort(&ready_list, priority_cmp, NULL);
+}
+
+void print_ready_list(void) {
+	struct list_elem* e;
+
+	for (e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)) {
+		printf("elem's val: %d\n", e->val);
+	}
+}
+
+bool ready_list_cmp(const struct list_elem *a_, const struct list_elem *b_,
+		  void *aux UNUSED)
+{
+
+	return a_->val < b_->val;
+}
+
+void test_list_max(void) {
+	struct list_elem elems[4];
+	// for (int i = 0; i < 5; i++) {
+	// 	elems[i].val = i + 1;
+	// 	elems[i].name = i;
+	// }
+	
+	elems[0].val = 3;
+	elems[0].name = "e1";
+	elems[1].val = 3;
+	elems[1].name = "e2";
+	elems[2].val = 4;
+	elems[2].name = "e3";
+	elems[3].val = 1;
+	elems[3].name = "e0";
+
+	list_push_back(&ready_list, &elems[0]);
+	list_push_back(&ready_list, &elems[1]);
+	list_push_back(&ready_list, &elems[2]);
+	list_push_back(&ready_list, &elems[3]);
+	// list_push_back(&ready_list, &elems[4]);
+	// list_push_back(&ready_list, &elems[0]);
+	// list_push_back(&ready_list, &elems[1]);
+
+	struct list_elem* e = list_max(&ready_list, ready_list_cmp, NULL);
+	int a = 12;
+}
+
+struct thread* get_thread(struct list_elem* e) {
+	return list_entry(e, struct thread, elem);
+}
+
+struct thread* get_d_thread(struct list_elem* e) {
+	return list_entry(e, struct thread, d_elem);
 }

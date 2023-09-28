@@ -145,6 +145,12 @@ int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+void sort_ready_list(void);
+void print_ready_list(void);
+void test_list_max(void);
+bool priority_cmp_for_done_max(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
+
+bool priority_cmp_for_waiters_max(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 
 void do_iret (struct intr_frame *tf);
 
