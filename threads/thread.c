@@ -493,9 +493,8 @@ void thread_set_priority(int new_priority)
 	// 자기보다 높아질 때,
 	else if (thread_current()->priority < new_priority) {
 		thread_current()->priority = new_priority;
-		thread_yield();
 	}
-
+	thread_yield();
 	
 	// // 자기랑 같을 때,
 	// else {
@@ -828,6 +827,17 @@ bool priority_cmp_for_waiters_max(const struct list_elem *a_, const struct list_
 	return a->priority < b->priority;
 }
 
+// 
+bool priority_cmp_for_cond_waiters_max(const struct list_elem *a_, const struct list_elem *b_,
+		  void *aux UNUSED)
+{
+	// a_로부터 semaphore_elem을 찾고, semaphore_elem->holder로 쓰레드 접근 후 우선순위 뽑아내기
+	const struct thread *a = list_entry(a_, struct semaphore_elem, elem)->holder;
+	const struct thread *b = list_entry(b_, struct semaphore_elem, elem)->holder;
+
+	return a->priority > b->priority;
+}
+
 void sort_ready_list(void) {
 	list_sort(&ready_list, priority_cmp, NULL);
 }
@@ -881,4 +891,8 @@ struct thread* get_thread(struct list_elem* e) {
 
 struct thread* get_d_thread(struct list_elem* e) {
 	return list_entry(e, struct thread, d_elem);
+}
+
+struct thread* get_cond_thread(struct list_elem* e) {
+	return list_entry(e, struct semaphore_elem, elem)->holder;
 }

@@ -256,7 +256,7 @@ lock_acquire (struct lock *lock) {
                   temp_lock->holder->priority = temp_thread->priority;
                }
             }
-            
+
             temp_thread = temp_lock->holder;
             temp_lock = temp_lock->holder->wait_on_lock;
          }
@@ -343,12 +343,6 @@ lock_held_by_current_thread (const struct lock *lock) {
 	return lock->holder == thread_current ();
 }
 
-/* One semaphore in a list. */
-struct semaphore_elem {
-	struct list_elem elem;              /* List element. */
-	struct semaphore semaphore;         /* This semaphore. */
-};
-
 /* Initializes condition variable COND.  A condition variable
    allows one piece of code to signal a condition and cooperating
    code to receive the signal and act upon it. */
@@ -382,16 +376,18 @@ cond_init (struct condition *cond) {
 void
 cond_wait (struct condition *cond, struct lock *lock) {
 	struct semaphore_elem waiter;
-
 	ASSERT (cond != NULL);
 	ASSERT (lock != NULL);
 	ASSERT (!intr_context ());
 	ASSERT (lock_held_by_current_thread (lock)); //현재 스레드가 락을 보유한 상태면
 
 	sema_init (&waiter.semaphore, 0); //
-	list_push_back (&cond->waiters, &waiter.elem);
+   waiter.holder = thread_current();
+   list_insert_ordered(&cond->waiters, &waiter.elem, priority_cmp_for_cond_waiters_max, NULL);
+	// list_push_back (&cond->waiters, &waiter.elem);
 	lock_release (lock);
 	sema_down (&waiter.semaphore);
+   waiter.holder = NULL;
 	lock_acquire (lock);
 }
 
@@ -409,9 +405,20 @@ cond_signal (struct condition *cond, struct lock *lock UNUSED) {
 	ASSERT (!intr_context ());
 	ASSERT (lock_held_by_current_thread (lock));
 
-	if (!list_empty (&cond->waiters))
+   struct list_elem* e;
+	if (!list_empty (&cond->waiters)) {
+      // waiter로부터 우선순위가 가장 큰 애의 semaphore를 넣어야 함. 
+      // semaphore_elem 구조체 반환
+      // e = list_max(&cond->waiters, priority_cmp_for_cond_waiters_max, NULL);
+
+      // sema_up(&list_entry(e, struct semaphore_elem, elem)->semaphore);
+      // list_remove(e);
 		sema_up (&list_entry (list_pop_front (&cond->waiters),
 					struct semaphore_elem, elem)->semaphore);
+   }
+		// sema_up (&list_entry (list_pop_front (&cond->waiters),
+      // cond waiters에서 우선순위 제일 높은놈을 sema_up 해주고 cond waiters에서 삭제해줌
+
 }
 
 /* Wakes up all threads, if any, waiting on COND (protected by
