@@ -3,4 +3,4 @@ make clean
 make
 cd build
 source ../../activate
-pintos --gdb -- run priority-donate-one
+pintos --gdb -- run priority-condvar

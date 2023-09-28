@@ -66,7 +66,7 @@ m_thread_func (void *ls_)
 
   sema_down (&ls->sema);
   msg ("Thread M finished.");
-}
+} 
 
 static void
 h_thread_func (void *ls_) 
