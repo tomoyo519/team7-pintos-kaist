@@ -96,6 +96,7 @@ struct thread {
 	struct list donations;
 	struct list_elem d_elem;
 	struct lock* wait_on_lock;
+	struct list lock_list;
 	int64_t thread_tick_count;
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
