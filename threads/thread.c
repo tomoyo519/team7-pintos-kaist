@@ -400,6 +400,30 @@ void thread_yield(void)
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority)
 {
+	// // 현재 소유중인 락 데이터 필요함
+	// // 현재 쓰레드의 우선순위보다 작을 때
+	// if (thread_current()->priority > new_priority) {
+
+	// }
+	// // 소유중인 락의 우선순위 변경
+	
+	// // 현재 쓰레드의 우선순위보다 클 때
+	// // 현재 쓰레드의 우선순위 변경
+	// // 소유중인 락의 우선순위 변경
+
+	// // 현재 우선순위 값 확인
+	// // 현재 우선순위 < 새 우선순위
+	// 	// 락 소유X: 그냥 바꾸기
+	// 	// 락 소유O: 
+	// // 현재 우선순위 > 새 우선순위
+	// // 현재 우선순위 == 새 우선순위
+
+	// // 락 소유 안했을 때
+	
+	// // 락 소유 했을 때
+	
+
+	// // if (thread_current())
 	thread_current()->priority = new_priority;
 	thread_yield();
 }
@@ -498,6 +522,7 @@ init_thread(struct thread *t, const char *name, int priority)
 
 	memset(t, 0, sizeof *t);						   // 0으로 초기화하고
 	list_init(&t->donations);
+	list_init(&t->lock_list);
 	t->status = THREAD_BLOCKED;						   // blocked 상태로(맨처음 상태가 blocked 상태)
 	strlcpy(t->name, name, sizeof t->name);			   // 인자로 받은 이름을 스레드 이름으로 하는것
 	t->tf.rsp = (uint64_t)t + PGSIZE - sizeof(void *); // 스택 포인터 설정

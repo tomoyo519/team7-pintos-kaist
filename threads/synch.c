@@ -267,6 +267,7 @@ lock_acquire (struct lock *lock) {
    // intr_set_level(prev_level);
 	sema_down (&lock->semaphore); //락안의 세마포어의 value를 down시킨다. -> wait리스트에 스레드를 넣고 block상태로 만든다
 	lock->holder = thread_current (); //현재 스레드가 lock을 가지고 있다.
+   list_push_back(&thread_current()->lock_list, &lock->elem);
    lock->priority = thread_current()->priority;
 }
 
@@ -328,6 +329,7 @@ lock_release (struct lock *lock) {
    }
 
 	lock->holder = NULL;
+   list_remove(&lock->elem);
 	sema_up (&lock->semaphore);
    thread_yield();
 }
