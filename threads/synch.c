@@ -256,8 +256,8 @@ lock_acquire (struct lock *lock) {
                   lock->holder->priority = temp_thread->priority;
                }
             }
-            temp_lock = lock->holder->wait_on_lock;
-            temp_thread = lock->holder;
+            temp_thread = temp_lock->holder;
+            temp_lock = temp_lock->holder->wait_on_lock;
          }
          sort_ready_list();
 
