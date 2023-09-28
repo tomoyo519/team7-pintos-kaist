@@ -225,6 +225,8 @@ lock_acquire (struct lock *lock) {
    struct thread* temp_thread;
    struct lock* temp_lock;
    
+   // enum intr_level prev_level = intr_disable();
+
    if (lock->semaphore.value == 0) {
       if (lock->holder->priority < thread_current()->priority) {
          thread_current()->wait_on_lock = lock;
@@ -262,6 +264,7 @@ lock_acquire (struct lock *lock) {
       }
    }
 
+   // intr_set_level(prev_level);
 	sema_down (&lock->semaphore); //락안의 세마포어의 value를 down시킨다. -> wait리스트에 스레드를 넣고 block상태로 만든다
 	lock->holder = thread_current (); //현재 스레드가 lock을 가지고 있다.
    lock->priority = thread_current()->priority;
