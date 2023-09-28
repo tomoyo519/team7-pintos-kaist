@@ -253,9 +253,10 @@ lock_acquire (struct lock *lock) {
 
                if (e == list_tail(&temp_lock->holder->donations)) {
                   list_push_back(&temp_lock->holder->donations, &temp_thread->d_elem);
-                  lock->holder->priority = temp_thread->priority;
+                  temp_lock->holder->priority = temp_thread->priority;
                }
             }
+            
             temp_thread = temp_lock->holder;
             temp_lock = temp_lock->holder->wait_on_lock;
          }
@@ -301,13 +302,11 @@ lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
 	ASSERT (lock_held_by_current_thread (lock));
    struct list_elem* e;
-   struct list* dons;
+   struct list* dons = &thread_current()->donations;;
    struct thread* t;   
 
    // 기부 받았을 때,
-   if (thread_current()->priority > lock->priority) {
-      dons = &thread_current()->donations;
-
+   if (!list_empty(dons)) {
       // 기부자 제거
       for (e = list_begin(dons); e != list_end(dons); e = list_next(e)) {
          t = list_entry(e, struct thread, d_elem);

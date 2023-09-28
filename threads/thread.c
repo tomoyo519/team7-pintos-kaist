@@ -400,6 +400,7 @@ void thread_yield(void)
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority)
 {
+
 	// // 현재 소유중인 락 데이터 필요함
 	// // 현재 쓰레드의 우선순위보다 작을 때
 	// if (thread_current()->priority > new_priority) {
@@ -422,10 +423,93 @@ void thread_set_priority(int new_priority)
 	
 	// // 락 소유 했을 때
 	
+	// 락이 있을 때,
+	// 락의 priority 갱신
+	struct thread* t;
+	struct list_elem* e;
+	struct list* lock_list = &thread_current()->lock_list; 
+	struct list* dons = &thread_current()->donations;
+	struct lock* lock;
 
-	// // if (thread_current())
-	thread_current()->priority = new_priority;
-	thread_yield();
+	for (e = list_begin(lock_list); e != list_end(lock_list); e = list_next(e)) {
+		struct lock* lock = list_entry(e, struct lock, elem);
+		lock->priority = new_priority;
+	}
+
+	// 락 있을 때, 없을 때 공통
+
+
+	// 자기보다 작아질 때,
+	if (thread_current()->priority > new_priority) {
+		// 도네 받은 거일 때,
+		// 무시
+
+		// 도네받은 최대 우선순위 구하기
+		int max_priority = -1;
+		for (e = list_begin(dons); e != list_end(dons); e = list_next(e)) {
+			t = list_entry(e, struct thread, d_elem);
+			if (max_priority < t->priority) {
+				max_priority = t->priority;
+			}
+		}
+
+		// 도네 안받은 거일 때(맥스값보다 자기가 크면 됨, 기부자 없으면 -1, 있는데 이후 set 해줬을 경우도 고려됨)
+		if (thread_current()->priority > max_priority) {
+			// 락들의 waiters중 최대값 구하기
+			int max_priority_in_waiters = -1;
+			struct list_elem* ee;
+
+			for (e = list_begin(lock_list); e != list_end(lock_list); e = list_next(e)) {
+				lock = list_entry(e, struct lock, elem);
+				struct list* waiters = &lock->semaphore.waiters;
+
+				for (ee = list_begin(waiters); ee != list_end(waiters); ee = list_next(ee)) {
+					t = list_entry(ee, struct thread, elem);
+
+					if (max_priority_in_waiters < t->priority) {
+						max_priority_in_waiters = t->priority;
+					}
+				} 
+			}
+
+			// new_priority가 같거나 크면 기부 받을 필요 없음
+
+			// max_priority_in_waiters가 더 큰 경우
+			if (new_priority < max_priority_in_waiters) {
+				// 기부받기
+				thread_current()->priority = max_priority_in_waiters;
+				list_push_back(dons, &t->d_elem);
+			}
+
+			else if (max_priority_in_waiters == -1) {
+				thread_current()->priority = new_priority;
+			}
+		}
+		// lock들의 waiters 중 가장 큰 애와 new_priority 비교한다
+			// new_priority가 아니면 기부자 
+		// 락들 웨이터스 중 
+	}
+
+	// 자기보다 높아질 때,
+	else if (thread_current()->priority < new_priority) {
+		thread_current()->priority = new_priority;
+		thread_yield();
+	}
+
+	
+	// // 자기랑 같을 때,
+	// else {
+	// 	// 기부받은 거면 기부 리스트 삭제
+	// 	if (!list_empty(&thread_current()->donations)) {
+	// 		for (e = list_begin(&thread_current()->donations); e != list_end(&thread_current()->donations); e = list_next(e)) {
+	// 			t = list_entry(e, struct thread, d_elem);
+
+	// 			if (t->priority == thread_current()->priority) {
+	// 				list_remove(e);
+	// 			}
+	// 		}
+	// 	}
+	// }
 }
 
 /* Returns the current thread's priority. */
