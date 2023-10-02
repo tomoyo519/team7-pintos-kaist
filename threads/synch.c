@@ -137,6 +137,7 @@ sema_up (struct semaphore *sema) {
    } 
 
 	sema->value++; //sema 구조체에서 value를 ++
+   thread_yield();
 	intr_set_level (old_level);
 }
 
@@ -297,6 +298,7 @@ lock_try_acquire (struct lock *lock) {
    An interrupt handler cannot acquire a lock, so it does not
    make sense to try to release a lock within an interrupt
    handler. */
+
 void
 lock_release (struct lock *lock) {
 	ASSERT (lock != NULL);
