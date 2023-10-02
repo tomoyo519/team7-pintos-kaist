@@ -66,6 +66,9 @@ static tid_t allocate_tid(void);
 // void make_thread_sleep(int64_t ticks);
 // void make_thread_wakeup(int64_t ticks);
 static bool tick_less(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
+static bool tick_less_priority_cmp(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
+static bool ready_list_cmp(const struct list_elem *a_, const struct list_elem *b_,
+		  void *aux UNUSED);
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -219,6 +222,11 @@ tid_t thread_create(const char *name, int priority,
 	/* Add to run queue. */
 	thread_unblock(t); // ready queue에 넣어준다.
 
+	// running 쓰레드보다 우선순위 더 높으면 yield
+	if (thread_current()->priority < t->priority) {
+		thread_yield();
+	}
+
 	return tid;
 }
 
@@ -253,7 +261,7 @@ void make_thread_sleep(int64_t ticks)
 
 	t->thread_tick_count = ticks;
 	t->status = THREAD_BLOCKED;
-	list_insert_ordered(&blocked_list, &(t->elem), tick_less, NULL);
+	list_insert_ordered(&blocked_list, &(t->elem), tick_less_priority_cmp, NULL);
 	schedule();
 	intr_set_level(old_level);
 }
@@ -280,6 +288,22 @@ tick_less(const struct list_elem *a_, const struct list_elem *b_,
 
 	return a->thread_tick_count < b->thread_tick_count;
 }
+
+static bool
+tick_less_priority_cmp(const struct list_elem *a_, const struct list_elem *b_,
+		  void *aux UNUSED)
+{
+	const struct thread *a = list_entry(a_, struct thread, elem);
+	const struct thread *b = list_entry(b_, struct thread, elem);
+
+	if (a->thread_tick_count == b->thread_tick_count) {
+		return a->priority >= b->priority;
+	}
+
+	return a->thread_tick_count < b->thread_tick_count;
+}
+
+
 /* Transitions a blocked thread T to the ready-to-run state.
    This is an error if T is not blocked.  (Use thread_yield() to
    make the running thread ready.)
@@ -299,7 +323,8 @@ void thread_unblock(struct thread *t)
 	old_level = intr_disable();			   // intr_disable return 값이 previous interrupt
 	ASSERT(t->status == THREAD_BLOCKED);   // thread blocked 상태면 다음 줄로 넘어감
 
-	list_push_back(&ready_list, &t->elem); // ready queue에 해당 스레드의 elem를 넣어줌
+	list_insert_ordered(&ready_list, &t->elem, priority_cmp, NULL);
+	// list_push_back(&ready_list, &t->elem); // ready queue에 해당 스레드의 elem를 넣어줌
 	t->status = THREAD_READY;			   // 상태를 ready로 바꾸고
 	intr_set_level(old_level);			   // 이전 인터럽트 상태로 원상복귀 시켜준다.
 }
@@ -366,7 +391,8 @@ void thread_yield(void)
 
 	old_level = intr_disable();					  // 인터럽트 비활
 	if (curr != idle_thread)					  // idle thread면 ready 중인 스레드가 없다
-		list_push_back(&ready_list, &curr->elem); // ready queue에 넣는다.
+		list_insert_ordered(&ready_list, &curr->elem, priority_cmp, NULL);
+		// list_push_back(&ready_list, &curr->elem); // ready queue에 넣는다.
 	do_schedule(THREAD_READY);					  // 뺏기는 과정이 do_schedule 현재 running 중인 thread를 ready queue에 넣어주고, ready queue에 있는 스레드를 실행시킨다.
 	intr_set_level(old_level);					  // 이전 interuppt로 복구
 }
@@ -374,7 +400,115 @@ void thread_yield(void)
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void thread_set_priority(int new_priority)
 {
-	thread_current()->priority = new_priority;
+
+	// // 현재 소유중인 락 데이터 필요함
+	// // 현재 쓰레드의 우선순위보다 작을 때
+	// if (thread_current()->priority > new_priority) {
+
+	// }
+	// // 소유중인 락의 우선순위 변경
+	
+	// // 현재 쓰레드의 우선순위보다 클 때
+	// // 현재 쓰레드의 우선순위 변경
+	// // 소유중인 락의 우선순위 변경
+
+	// // 현재 우선순위 값 확인
+	// // 현재 우선순위 < 새 우선순위
+	// 	// 락 소유X: 그냥 바꾸기
+	// 	// 락 소유O: 
+	// // 현재 우선순위 > 새 우선순위
+	// // 현재 우선순위 == 새 우선순위
+
+	// // 락 소유 안했을 때
+	
+	// // 락 소유 했을 때
+	
+	// 락이 있을 때,
+	// 락의 priority 갱신
+	struct thread* t;
+	struct list_elem* e;
+	struct list* lock_list = &thread_current()->lock_list; 
+	struct list* dons = &thread_current()->donations;
+	struct lock* lock;
+
+	for (e = list_begin(lock_list); e != list_end(lock_list); e = list_next(e)) {
+		struct lock* lock = list_entry(e, struct lock, elem);
+		lock->priority = new_priority;
+	}
+
+	// 락 있을 때, 없을 때 공통
+
+
+	// 자기보다 작아질 때,
+	if (thread_current()->priority > new_priority) {
+		// 도네 받은 거일 때,
+		// 무시
+
+		// 도네받은 최대 우선순위 구하기
+		int max_priority = -1;
+		for (e = list_begin(dons); e != list_end(dons); e = list_next(e)) {
+			t = list_entry(e, struct thread, d_elem);
+			if (max_priority < t->priority) {
+				max_priority = t->priority;
+			}
+		}
+
+		// 도네 안받은 거일 때(맥스값보다 자기가 크면 됨, 기부자 없으면 -1, 있는데 이후 set 해줬을 경우도 고려됨)
+		if (thread_current()->priority > max_priority) {
+			// 락들의 waiters중 최대값 구하기
+			int max_priority_in_waiters = -1;
+			struct list_elem* ee;
+
+			for (e = list_begin(lock_list); e != list_end(lock_list); e = list_next(e)) {
+				lock = list_entry(e, struct lock, elem);
+				struct list* waiters = &lock->semaphore.waiters;
+
+				for (ee = list_begin(waiters); ee != list_end(waiters); ee = list_next(ee)) {
+					t = list_entry(ee, struct thread, elem);
+
+					if (max_priority_in_waiters < t->priority) {
+						max_priority_in_waiters = t->priority;
+					}
+				} 
+			}
+
+			// new_priority가 같거나 크면 기부 받을 필요 없음
+
+			// max_priority_in_waiters가 더 큰 경우
+			if (new_priority < max_priority_in_waiters) {
+				// 기부받기
+				thread_current()->priority = max_priority_in_waiters;
+				list_push_back(dons, &t->d_elem);
+			}
+
+			else if (max_priority_in_waiters == -1) {
+				thread_current()->priority = new_priority;
+			}
+		}
+		// lock들의 waiters 중 가장 큰 애와 new_priority 비교한다
+			// new_priority가 아니면 기부자 
+		// 락들 웨이터스 중 
+	}
+
+	// 자기보다 높아질 때,
+	else if (thread_current()->priority < new_priority) {
+		thread_current()->priority = new_priority;
+	}
+	thread_yield();
+	
+	// // 자기랑 같을 때,
+	// else {
+	// 	// 기부받은 거면 기부 리스트 삭제
+	// 	if (!list_empty(&thread_current()->donations)) {
+	// 		for (e = list_begin(&thread_current()->donations); e != list_end(&thread_current()->donations); e = list_next(e)) {
+	// 			t = list_entry(e, struct thread, d_elem);
+
+	// 			if (t->priority == thread_current()->priority) {
+	// 				list_remove(e);
+	// 			}
+	// 		}
+	// 	}
+	// }
 }
 
 /* Returns the current thread's priority. */
@@ -470,6 +604,8 @@ init_thread(struct thread *t, const char *name, int priority)
 	ASSERT(name != NULL);
 
 	memset(t, 0, sizeof *t);						   // 0으로 초기화하고
+	list_init(&t->donations);
+	list_init(&t->lock_list);
 	t->status = THREAD_BLOCKED;						   // blocked 상태로(맨처음 상태가 blocked 상태)
 	strlcpy(t->name, name, sizeof t->name);			   // 인자로 받은 이름을 스레드 이름으로 하는것
 	t->tf.rsp = (uint64_t)t + PGSIZE - sizeof(void *); // 스택 포인터 설정
@@ -662,4 +798,101 @@ allocate_tid(void)
 	lock_release(&tid_lock);
 
 	return tid;
+}
+
+bool priority_cmp(const struct list_elem *a_, const struct list_elem *b_,
+		  void *aux UNUSED)
+{
+	const struct thread *a = list_entry(a_, struct thread, elem);
+	const struct thread *b = list_entry(b_, struct thread, elem);
+
+	return a->priority > b->priority;
+}
+
+bool priority_cmp_for_done_max(const struct list_elem *a_, const struct list_elem *b_,
+		  void *aux UNUSED)
+{
+	const struct thread *a = list_entry(a_, struct thread, d_elem);
+	const struct thread *b = list_entry(b_, struct thread, d_elem);
+
+	return a->priority < b->priority;
+}
+
+bool priority_cmp_for_waiters_max(const struct list_elem *a_, const struct list_elem *b_,
+		  void *aux UNUSED)
+{
+	const struct thread *a = list_entry(a_, struct thread, elem);
+	const struct thread *b = list_entry(b_, struct thread, elem);
+
+	return a->priority < b->priority;
+}
+
+// 
+bool priority_cmp_for_cond_waiters_max(const struct list_elem *a_, const struct list_elem *b_,
+		  void *aux UNUSED)
+{
+	// a_로부터 semaphore_elem을 찾고, semaphore_elem->holder로 쓰레드 접근 후 우선순위 뽑아내기
+	const struct thread *a = list_entry(a_, struct semaphore_elem, elem)->holder;
+	const struct thread *b = list_entry(b_, struct semaphore_elem, elem)->holder;
+
+	return a->priority > b->priority;
+}
+
+void sort_ready_list(void) {
+	list_sort(&ready_list, priority_cmp, NULL);
+}
+
+void print_ready_list(void) {
+	struct list_elem* e;
+
+	for (e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)) {
+		printf("elem's val: %d\n", e->val);
+	}
+}
+
+bool ready_list_cmp(const struct list_elem *a_, const struct list_elem *b_,
+		  void *aux UNUSED)
+{
+
+	return a_->val < b_->val;
+}
+
+void test_list_max(void) {
+	struct list_elem elems[4];
+	// for (int i = 0; i < 5; i++) {
+	// 	elems[i].val = i + 1;
+	// 	elems[i].name = i;
+	// }
+	
+	elems[0].val = 3;
+	elems[0].name = "e1";
+	elems[1].val = 3;
+	elems[1].name = "e2";
+	elems[2].val = 4;
+	elems[2].name = "e3";
+	elems[3].val = 1;
+	elems[3].name = "e0";
+
+	list_push_back(&ready_list, &elems[0]);
+	list_push_back(&ready_list, &elems[1]);
+	list_push_back(&ready_list, &elems[2]);
+	list_push_back(&ready_list, &elems[3]);
+	// list_push_back(&ready_list, &elems[4]);
+	// list_push_back(&ready_list, &elems[0]);
+	// list_push_back(&ready_list, &elems[1]);
+
+	struct list_elem* e = list_max(&ready_list, ready_list_cmp, NULL);
+	int a = 12;
+}
+
+struct thread* get_thread(struct list_elem* e) {
+	return list_entry(e, struct thread, elem);
+}
+
+struct thread* get_d_thread(struct list_elem* e) {
+	return list_entry(e, struct thread, d_elem);
+}
+
+struct thread* get_cond_thread(struct list_elem* e) {
+	return list_entry(e, struct semaphore_elem, elem)->holder;
 }

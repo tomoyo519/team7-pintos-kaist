@@ -93,6 +93,10 @@ struct thread {
 	int priority;                       /* Priority. */
 	/* Shared between thread.c and synch.c. */
 	struct list_elem elem;              /* List element. */
+	struct list donations;
+	struct list_elem d_elem;
+	struct lock* wait_on_lock;
+	struct list lock_list;
 	int64_t thread_tick_count;
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
@@ -136,11 +140,19 @@ void make_thread_wakeup(int64_t ticks);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+bool priority_cmp(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 
 int thread_get_nice (void);
 void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
+void sort_ready_list(void);
+void print_ready_list(void);
+void test_list_max(void);
+bool priority_cmp_for_done_max(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
+bool priority_cmp_for_cond_waiters_max(const struct list_elem *a_, const struct list_elem *b_,void *aux UNUSED);
+
+bool priority_cmp_for_waiters_max(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 
 void do_iret (struct intr_frame *tf);
 
