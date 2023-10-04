@@ -137,7 +137,7 @@ sema_up (struct semaphore *sema) {
    } 
 
 	sema->value++; //sema 구조체에서 value를 ++
-   thread_yield();
+   thread_preemption();
 	intr_set_level (old_level);
 }
 
@@ -332,7 +332,7 @@ lock_release (struct lock *lock) {
 	lock->holder = NULL;
    list_remove(&lock->elem);
 	sema_up (&lock->semaphore);
-   thread_yield();
+   // thread_yield();
 }
 
 /* Returns true if the current thread holds LOCK, false
