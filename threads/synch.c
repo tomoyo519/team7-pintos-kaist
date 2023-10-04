@@ -127,17 +127,23 @@ sema_up (struct semaphore *sema) {
 
 	old_level = intr_disable ();
    struct list_elem* e;
+   struct thread* t;
+
+   sema->value++; //sema 구조체에서 value를 ++
 
    //waiters에 thread가 있다면
 	if (!list_empty (&sema->waiters)) {
       // waiters에서 우선순위 최댓값 찾아서 ready -> ready큐 삽입
       e = list_max(&sema->waiters, priority_cmp_for_waiters_max, NULL);
+      t = list_entry (e, struct thread, elem);
       list_remove(e);
-		thread_unblock (list_entry (e, struct thread, elem)); //블락된 스레드를 러닝 상태로 바꿔줌
+		thread_unblock (t); //블락된 스레드를 러닝 상태로 바꿔줌
+      if(!intr_context && t->priority > thread_current()->priority) {
+         thread_yield();
+      }
    } 
 
-	sema->value++; //sema 구조체에서 value를 ++
-   thread_preemption();
+   // thread_preemption();
 	intr_set_level (old_level);
 }
 
