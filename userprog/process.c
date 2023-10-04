@@ -164,6 +164,9 @@ int
 process_exec (void *f_name) {
 	char *file_name = f_name;
 	bool success;
+	char *token, *save_ptr;
+	int i = 0;
+	char *program_name;
 
 	/* We cannot use the intr_frame in the thread structure.
 	 * This is because when current thread rescheduled,
@@ -173,20 +176,50 @@ process_exec (void *f_name) {
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
 
+	for (token = strtok_r(file_name, " ", &save_ptr); token!=NULL; token = strtok_r (NULL, " ", &save_ptr)){
+		if(i == 0){
+			program_name = token;
+		}
+		else if(i == 1){
+			_if.R.rdi = token;
+		}
+		else if(i == 2){
+			_if.R.rsi = token;
+		}
+		else if(i == 3){
+			_if.R.rdx = token;
+		}
+		else if(i == 4){
+			_if.R.rcx = token;
+		}
+		else if(i == 5){
+			_if.R.r8 = token;
+		}
+		else if(i == 6){
+			_if.R.r9 = token;
+		}
+		i++;
+	}
+	
 	/* We first kill the current context */
 	process_cleanup ();
 
 	/* And then load the binary */
-	success = load (file_name, &_if);
+	success = load (program_name, &_if);
 
 	/* If load failed, quit. */
-	palloc_free_page (file_name);
+	palloc_free_page (program_name);
 	if (!success)
 		return -1;
 
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
+}
+//유저 스택에 프로그램 이름과 인자들을 저장하는 함수
+//parse: 프로그램 이름과 인자가 저장되어 있는 메모리 공간, count:인자의 개수, esp:스택 포인터를 가리키는 주소
+void argument_stack(char **parse, int count, void **esp) {
+	
 }
 
 
