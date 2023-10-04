@@ -155,5 +155,5 @@ bool priority_cmp_for_cond_waiters_max(const struct list_elem *a_, const struct 
 bool priority_cmp_for_waiters_max(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 
 void do_iret (struct intr_frame *tf);
-
+void thread_preemption(void);
 #endif /* threads/thread.h */

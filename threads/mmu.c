@@ -203,6 +203,7 @@ pml4_destroy (uint64_t *pml4) {
  * register. */
 void
 pml4_activate (uint64_t *pml4) {
+	
 	lcr3 (vtop (pml4 ? pml4 : base_pml4));
 }
 

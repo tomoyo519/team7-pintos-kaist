@@ -896,3 +896,8 @@ struct thread* get_d_thread(struct list_elem* e) {
 struct thread* get_cond_thread(struct list_elem* e) {
 	return list_entry(e, struct semaphore_elem, elem)->holder;
 }
+
+void thread_preemption (void){
+    if (!list_empty (&ready_list) && thread_current ()->priority < list_entry (list_front (&ready_list), struct thread, elem)->priority)
+        thread_yield ();
+}
