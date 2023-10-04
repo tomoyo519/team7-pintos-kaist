@@ -211,7 +211,7 @@ process_exec (void *f_name) {
 	palloc_free_page (program_name);
 	if (!success)
 		return -1;
-
+	hex_dump(_if.rsp, _if.rsp, LOADER_PHYS_BASE - _if.rsp, true);
 	/* Start switched process. */
 	do_iret (&_if);
 	NOT_REACHED ();
