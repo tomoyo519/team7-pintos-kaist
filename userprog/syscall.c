@@ -14,7 +14,7 @@
 
 //#include <syscall.h>
 #include <stdint.h>
-#include "/home/ubuntu/pintos-kaist/include/lib/syscall-nr.h"
+#include "include/lib/syscall-nr.h"
 
 
 /* Process identifier. */
@@ -122,8 +122,7 @@ int write (int fd, const void *buffer, unsigned length);
 void seek (int fd, unsigned position);
 unsigned tell (int fd);
 void close (int fd);
-
-
+void power_off(void);
 
 /* System call.
  *
@@ -160,46 +159,45 @@ syscall_handler (struct intr_frame *f UNUSED) {
 	{
 	case SYS_HALT:      //power off! 핀토스를 종료, 강종 느낌
 		halt();
-
 		break;
 	case SYS_EXIT:      
-		
+		// exit();			
 		break;
 	case SYS_FORK:      
-		
+		// fork();
 		break;
 	case SYS_EXEC:      
-		
+		// exec();
 		break;
 	case SYS_WAIT:      
-		
+		// wait();
 		break;
 	case SYS_CREATE:      
-		
+		// create();
 		break;
 	case SYS_REMOVE:      
-		
+		// remove();
 		break;
 	case SYS_OPEN:      
-		
+		// open();
 		break;
 	case SYS_FILESIZE:      
-		
+		// filesize();
 		break;
 	case SYS_READ:      
-		
+		// read();
 		break;
 	case SYS_WRITE:      
-		
+		// write();
 		break;
 	case SYS_SEEK:      
-		
+		// seek();
 		break;
 	case SYS_TELL:      
-		
+		// tell();
 		break;
 	case SYS_CLOSE:      
-		
+		// close();
 		break;
 	default:
 		break;
@@ -212,17 +210,27 @@ syscall_handler (struct intr_frame *f UNUSED) {
 void
 halt (void) {
 	syscall0 (SYS_HALT);
+	//power_off() 
 	NOT_REACHED ();
 }
 
 void
 exit (int status) {
 	syscall1 (SYS_EXIT, status);
+	// if(status == 0){
+	// 	//success
+
+	// }
+	// else{
+	// 	//error
+
+	// }
 	NOT_REACHED ();
 }
 
 pid_t
 fork (const char *thread_name){
+
 	return (pid_t) syscall1 (SYS_FORK, thread_name);
 }
 
@@ -281,58 +289,16 @@ close (int fd) {
 	syscall1 (SYS_CLOSE, fd);
 }
 
-int
-dup2 (int oldfd, int newfd){
-	return syscall2 (SYS_DUP2, oldfd, newfd);
-}
 
-void *
-mmap (void *addr, size_t length, int writable, int fd, off_t offset) {
-	return (void *) syscall5 (SYS_MMAP, addr, length, writable, fd, offset);
-}
+// void
+// power_off (void) {
+// #ifdef FILESYS
+// 	filesys_done ();
+// #endif
 
-void
-munmap (void *addr) {
-	syscall1 (SYS_MUNMAP, addr);
-}
+// 	// print_stats ();
 
-bool
-chdir (const char *dir) {
-	return syscall1 (SYS_CHDIR, dir);
-}
-
-bool
-mkdir (const char *dir) {
-	return syscall1 (SYS_MKDIR, dir);
-}
-
-bool
-readdir (int fd, char name[READDIR_MAX_LEN + 1]) {
-	return syscall2 (SYS_READDIR, fd, name);
-}
-
-bool
-isdir (int fd) {
-	return syscall1 (SYS_ISDIR, fd);
-}
-
-int
-inumber (int fd) {
-	return syscall1 (SYS_INUMBER, fd);
-}
-
-int
-symlink (const char* target, const char* linkpath) {
-	return syscall2 (SYS_SYMLINK, target, linkpath);
-}
-
-int
-mount (const char *path, int chan_no, int dev_no) {
-	return syscall3 (SYS_MOUNT, path, chan_no, dev_no);
-}
-
-int
-umount (const char *path) {
-	return syscall1 (SYS_UMOUNT, path);
-}
-
+// 	printf ("Powering off...\n");
+// 	// outw (0x604, 0x2000);               /* Poweroff command for qemu */
+// 	for (;;);
+// }

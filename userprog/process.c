@@ -190,7 +190,8 @@ int process_exec(void *f_name)
 	_if.eflags = FLAG_IF | FLAG_MBS;
 	// printf("%s\n", file_name);
 
-	char *prg_argv[64];
+	char *prg_argv[15];
+	char sub_filename[15];
 	// 인자 잘라서 일단 argv에 넣기
 	for (token = strtok_r(file_name, " ", &save_ptr); token != NULL; token = strtok_r(NULL, " ", &save_ptr))
 	{
@@ -199,12 +200,14 @@ int process_exec(void *f_name)
 	}
 	prg_argv[i] = NULL;
 
+	strlcpy(sub_filename, prg_argv[0], strlen(prg_argv[0])+1);
+	printf("%s\n", sub_filename);
 	/* We first kill the current context */
 	process_cleanup();
 
 	/* And then load the binary */
-	success = load(prg_argv[0], &_if);
-
+	success = load(sub_filename, &_if);
+	ASSERT(success);
 	// load 다음에 USER_STACK 주소에 접근을 해야 올바른 접근이다.
 	
 	// // 1. 유저 스택에 인자값 자체 역순으로 넣기
@@ -215,6 +218,8 @@ int process_exec(void *f_name)
 		int length = strlen(prg_argv[j]) + 1;				  // 문자열 길이 계산 (널 문자 포함)
 		temp_addr = (uint64_t *)((char *)temp_addr - length); // 길이만큼 주소를 이동
 		memcpy(temp_addr, prg_argv[j], length);				  // 문자열 복사
+
+		prg_argv[j] = temp_addr;
 	}
 
 	// 2. word-align 값 넣기(주소가 8의 배수(word: 8바이트)가 되도록 padding 넣기)
@@ -224,20 +229,20 @@ int process_exec(void *f_name)
 	// 3. 유저 스택에 인자값의 포인터 역순으로 넣기
 	for (int j = i; j >= 0 ; j --){
 		temp_addr = temp_addr - 1;
-		SET_PTR(temp_addr, prg_argv[j]);
+		memcpy(temp_addr, &prg_argv[j], sizeof(void *));
 	}
 	
 	// 4. 가짜 리턴 어드레스 넣기
 	temp_addr -= 1;
-	SET_PTR(temp_addr, NULL);
+	memset(temp_addr, 0, sizeof(void *));
 
 	// 5. RDI: 인자의 개수, RSI: argv의 시작 주소
 	_if.R.rdi = i;
-	_if.R.rsi = prg_argv[0];
+	_if.R.rsi = temp_addr + 1;
 	_if.rsp = temp_addr;
 
 	/* If load failed, quit. */
-	palloc_free_page(prg_argv[0]);
+	palloc_free_page(file_name);
 
 	if (!success)
 		return -1;

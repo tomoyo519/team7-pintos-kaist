@@ -35,7 +35,6 @@ int write (int fd, const void *buffer, unsigned length);
 void seek (int fd, unsigned position);
 unsigned tell (int fd);
 void close (int fd);
-
 int dup2(int oldfd, int newfd);
 
 /* Project 3 and optionally project 4. */
