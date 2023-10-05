@@ -18,8 +18,11 @@
 #include "threads/mmu.h"
 #include "threads/vaddr.h"
 #include "intrinsic.h"
+#include "threads/synch.h"
+#include "lib/stdio.h"
 #ifdef VM
 #include "vm/vm.h"
+
 #endif
 
 static void process_cleanup (void);
@@ -175,7 +178,7 @@ process_exec (void *f_name) {
 	_if.ds = _if.es = _if.ss = SEL_UDSEG;
 	_if.cs = SEL_UCSEG;
 	_if.eflags = FLAG_IF | FLAG_MBS;
-
+	// printf("%s\n", file_name);
 	for (token = strtok_r(file_name, " ", &save_ptr); token!=NULL; token = strtok_r (NULL, " ", &save_ptr)){
 		if(i == 0){
 			program_name = token;
@@ -198,6 +201,7 @@ process_exec (void *f_name) {
 		else if(i == 6){
 			_if.R.r9 = token;
 		}
+		// printf("%s\n", token);
 		i++;
 	}
 	
@@ -237,7 +241,11 @@ process_wait (tid_t child_tid UNUSED) {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	return -1;
+	// return -1;
+	while(1){
+		// barrier();
+		;
+	}
 }
 
 /* Exit the process. This function is called by thread_exit (). */

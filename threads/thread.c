@@ -628,11 +628,12 @@ next_thread_to_run(void)
 }
 
 /* Use iretq to launch the thread */
+/*인터럽트 프레임 (이를 통해 CPU 레지스터들의 상태)를 복원하는 역할을 합니다. 이 함수는 인터럽트가 반환될 때 호출됩니다.*/
 void do_iret(struct intr_frame *tf)
 {
 	__asm __volatile(
-		"movq %0, %%rsp\n"
-		"movq 0(%%rsp),%%r15\n"
+		"movq %0, %%rsp\n"			//C코드에서 입력으로 들어온 tf값으로, 스택 포인터(rsp)에 tf를 저장
+		"movq 0(%%rsp),%%r15\n"		//
 		"movq 8(%%rsp),%%r14\n"
 		"movq 16(%%rsp),%%r13\n"
 		"movq 24(%%rsp),%%r12\n"
@@ -647,11 +648,11 @@ void do_iret(struct intr_frame *tf)
 		"movq 96(%%rsp),%%rcx\n"
 		"movq 104(%%rsp),%%rbx\n"
 		"movq 112(%%rsp),%%rax\n"
-		"addq $120,%%rsp\n"
+		"addq $120,%%rsp\n"			//데이터를 120byte만큼 제거(pop)
 		"movw 8(%%rsp),%%ds\n"
 		"movw (%%rsp),%%es\n"
 		"addq $32, %%rsp\n"
-		"iretq"
+		"iretq"						//tf상에서 
 		: : "g"((uint64_t)tf) : "memory");
 }
 
@@ -898,6 +899,6 @@ struct thread* get_cond_thread(struct list_elem* e) {
 }
 
 void thread_preemption (void){
-    if (!list_empty (&ready_list) && thread_current ()->priority < list_entry (list_front (&ready_list), struct thread, elem)->priority)
+    if (!intr_context() && !list_empty (&ready_list) && thread_current ()->priority < list_entry (list_front (&ready_list), struct thread, elem)->priority)
         thread_yield ();
 }

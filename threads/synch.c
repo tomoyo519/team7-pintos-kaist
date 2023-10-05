@@ -138,9 +138,7 @@ sema_up (struct semaphore *sema) {
       t = list_entry (e, struct thread, elem);
       list_remove(e);
 		thread_unblock (t); //블락된 스레드를 러닝 상태로 바꿔줌
-      if(!intr_context && t->priority > thread_current()->priority) {
-         thread_yield();
-      }
+      thread_preemption();
    } 
 
    // thread_preemption();
