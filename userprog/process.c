@@ -21,9 +21,13 @@
 #include "threads/synch.h"
 #include "lib/stdio.h"
 #ifdef VM
-#include "vm/vm.h"
-
+#include "vm/vmh"
 #endif
+
+#define ALIGNMENT 8
+#define ALIGN_DOWN(size) ((size) & ~(ALIGNMENT - 1))
+#define PUT(p, val) (*(unsigned int *)(p) = (val))
+#define SET_PTR(p, ptr) (*(unsigned int *)(p) = (unsigned int)(ptr))
 
 static void process_cleanup(void);
 static bool load(const char *file_name, struct intr_frame *if_);
@@ -213,13 +217,19 @@ int process_exec(void *f_name)
 		memcpy(temp_addr, prg_argv[j], length);				  // 문자열 복사
 	}
 	// 2. word-align 값 넣기(주소가 8의 배수(word: 8바이트)가 되도록 padding 넣기)
-
+	//SET_PTR(p, ptr) : p = 스택의 시작 주소, ptr :
+	temp_addr = (uint64_t *)((uintptr_t)(ALIGN_DOWN((uintptr_t)temp_addr)));
 	// 3. 유저 스택에 인자값의 포인터 역순으로 넣기
-
+	for (int j = i; j >= 0 ; j --){
+		temp_addr = temp_addr - 1;
+		SET_PTR(temp_addr, prg_argv[j]);
+	}
 	// 4. 가짜 리턴 어드레스 넣기
-
+	SET_PTR(temp_addr-1, NULL);
 	// 5. RDI: 인자의 개수, RSI: argv의 시작 주소
-
+	_if.R.rdi = i;
+	_if.R.rsi = prg_argv[0];
+	_if.rsp = temp_addr - 1;
 	/* If load failed, quit. */
 	palloc_free_page(prg_argv[0]);
 
