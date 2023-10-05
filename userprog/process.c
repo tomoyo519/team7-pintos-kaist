@@ -176,6 +176,7 @@ int process_exec(void *f_name)
 {
 	char *file_name = f_name;
 	bool success;
+	
 	char *token, *save_ptr;
 	int i = 0;
 	char *program_name;
@@ -197,7 +198,6 @@ int process_exec(void *f_name)
 		i++;
 	}
 	prg_argv[i] = NULL;
-
 
 	/* We first kill the current context */
 	process_cleanup();
@@ -226,7 +226,7 @@ int process_exec(void *f_name)
 		temp_addr = temp_addr - 1;
 		SET_PTR(temp_addr, prg_argv[j]);
 	}
-
+	
 	// 4. 가짜 리턴 어드레스 넣기
 	temp_addr -= 1;
 	SET_PTR(temp_addr, NULL);
