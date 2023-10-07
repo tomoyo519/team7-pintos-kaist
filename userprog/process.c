@@ -176,7 +176,7 @@ int process_exec(void *f_name)
 {
 	char *file_name = f_name;
 	bool success;
-	
+
 	char *token, *save_ptr;
 	int i = 0;
 	char *program_name;
@@ -200,7 +200,7 @@ int process_exec(void *f_name)
 	}
 	prg_argv[i] = NULL;
 
-	strlcpy(sub_filename, prg_argv[0], strlen(prg_argv[0])+1);
+	strlcpy(sub_filename, prg_argv[0], strlen(prg_argv[0]) + 1);
 	printf("%s\n", sub_filename);
 	/* We first kill the current context */
 	process_cleanup();
@@ -209,7 +209,7 @@ int process_exec(void *f_name)
 	success = load(sub_filename, &_if);
 
 	// load 다음에 USER_STACK 주소에 접근을 해야 올바른 접근이다.
-	
+
 	// // 1. 유저 스택에 인자값 자체 역순으로 넣기
 	uint64_t *temp_addr = (uint64_t *)USER_STACK;
 	for (int j = i - 1; j >= 0; j--)
@@ -219,27 +219,28 @@ int process_exec(void *f_name)
 		temp_addr = (uint64_t *)((char *)temp_addr - length); // 길이만큼 주소를 이동
 		memcpy(temp_addr, prg_argv[j], length);				  // 문자열 복사
 
-		prg_argv[j] = temp_addr;								//주소 값으로 덮어 씌우기
+		prg_argv[j] = temp_addr; // 주소 값으로 덮어 씌우기
 	}
 
 	// 2. word-align 값 넣기(주소가 8의 배수(word: 8바이트)가 되도록 padding 넣기)
-	//SET_PTR(p, ptr) : p = 스택의 시작 주소, ptr :
+	// SET_PTR(p, ptr) : p = 스택의 시작 주소, ptr :
 	temp_addr = (uint64_t *)((uintptr_t)(ALIGN_DOWN((uintptr_t)temp_addr)));
 
 	// 3. 유저 스택에 인자값의 포인터 역순으로 넣기
-	for (int j = i; j >= 0 ; j --){
+	for (int j = i; j >= 0; j--)
+	{
 		temp_addr = temp_addr - 1;
-		memcpy(temp_addr, &prg_argv[j], sizeof(void *));		//prg_argv[j]의 내용을 temp_addr 위치로 복사
+		memcpy(temp_addr, &prg_argv[j], sizeof(void *)); // prg_argv[j]의 내용을 temp_addr 위치로 복사
 	}
-	
+
 	// 4. 가짜 리턴 어드레스 넣기
 	temp_addr -= 1;
-	memset(temp_addr, 0, sizeof(void *));						//특정 메모리 블록을 주어진 값(0)으로 채우기
+	memset(temp_addr, 0, sizeof(void *)); // 특정 메모리 블록을 주어진 값(0)으로 채우기
 
 	// 5. RDI: 인자의 개수, RSI: argv의 시작 주소
 	_if.R.rdi = i;
-	_if.R.rsi = temp_addr + 1;									//temp_addr의 마지막 위치는 가짜 리턴 어드레스의 시작지점. 다시 그 다음 지점으로 세팅
-	_if.rsp = temp_addr;										//현재 스택 포인터의 위치(?)
+	_if.R.rsi = temp_addr + 1; // temp_addr의 마지막 위치는 가짜 리턴 어드레스의 시작지점. 다시 그 다음 지점으로 세팅
+	_if.rsp = temp_addr;	   // 현재 스택 포인터의 위치(?)
 
 	/* If load failed, quit. */
 	palloc_free_page(file_name);
@@ -268,24 +269,24 @@ void argument_stack(char **parse, int count, void **esp)
  * immediately, without waiting.
  *
  * This function will be implemented in problem 2-2.  For now, it
- * does nothing. 
- * 
+ * does nothing.
+ *
  * 스레드 tid가 종료될때까지 기다리고, 그 종료 상태를 반환한다.
- * 만약 커널에 의해 종료되었다면(즉, 예외로 인해 강제 종료된 경우), 
- * -1을 반환한다. 만약 tid가 유효하지 않거나 호출한 프로세스의 
- * 자식이 아니거나, 또는 process_wait이 해당 tid에 대해 이미 
+ * 만약 커널에 의해 종료되었다면(즉, 예외로 인해 강제 종료된 경우),
+ * -1을 반환한다. 만약 tid가 유효하지 않거나 호출한 프로세스의
+ * 자식이 아니거나, 또는 process_wait이 해당 tid에 대해 이미
  * 성공적으로 호출되었다면, 기다리지 않고 즉시 -1을 반환한다.*/
 int process_wait(tid_t child_tid UNUSED)
 {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
-	//1.스레드 tid가 종료될때까지 기다린다
-	while(child_tid != TID_ERROR){
-		;	
+	// 1.스레드 tid가 종료될때까지 기다린다
+	while (child_tid != TID_ERROR)
+	{
+		;
 	}
 	return -1;
-	
 }
 
 /* Exit the process. This function is called by thread_exit (). */
@@ -735,3 +736,22 @@ setup_stack(struct intr_frame *if_)
 	return success;
 }
 #endif /* VM */
+
+/* 유저 스택에 있는 인자들을 커널에 저장하는 함수
+스택 포인터(esp)에 count(인자의 개수) 만큼의 데이터를 arg에 저장 */
+
+// 파일 객체에 대한 파일 디스크립터를 생성하는 함수
+int process_add_file(struct file *f)
+{
+	struct thread *curr = thread_current();
+	struct file **fdt = curr->fdt;
+
+	// limit을 넘지 않는 범위 안에서 빈 자리 탐색
+	while (curr->next_fd < FDT_COUNT_LIMIT && fdt[curr->next_fd])
+		curr->next_fd++;
+	if (curr->next_fd >= FDT_COUNT_LIMIT)
+		return -1;
+	fdt[curr->next_fd] = f;
+
+	return curr->next_fd;
+}
