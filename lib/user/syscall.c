@@ -2,6 +2,9 @@
 #include <stdint.h>
 #include "../syscall-nr.h"
 
+/*이 함수는 사용자가 시스템 콜을 수행할 때, 각 인자를 올바른 레지스터에 배치하고, syscall 어셈블리 명령어를
+  호출하여 커널에 제어를 전달한다. 커널은 해당 시스템 콜을 수행한 후 결과를 rax레지스터에 저장하고,
+  사용자 공간 코드로 제어를 반환한다.ret변수는 이 rax레지스터의 값을 담아 반환된다.*/
 __attribute__((always_inline))
 static __inline int64_t syscall (uint64_t num_, uint64_t a1_, uint64_t a2_,
 		uint64_t a3_, uint64_t a4_, uint64_t a5_, uint64_t a6_) {
@@ -15,18 +18,18 @@ static __inline int64_t syscall (uint64_t num_, uint64_t a1_, uint64_t a2_,
 	register uint64_t *a6 asm ("r9") = (uint64_t *) a6_;
 
 	__asm __volatile(
-			"mov %1, %%rax\n"
-			"mov %2, %%rdi\n"
+			"mov %1, %%rax\n"		//num의 값이 rax 레지스터로 이동
+			"mov %2, %%rdi\n"		
 			"mov %3, %%rsi\n"
 			"mov %4, %%rdx\n"
 			"mov %5, %%r10\n"
 			"mov %6, %%r8\n"
 			"mov %7, %%r9\n"
-			"syscall\n"
-			: "=a" (ret)
-			: "g" (num), "g" (a1), "g" (a2), "g" (a3), "g" (a4), "g" (a5), "g" (a6)
-			: "cc", "memory");
-	return ret;
+			"syscall\n"				//시스템 콜 수행. 이떄, 위에서 설정한 레지스터 값들이 사용된다. 인터럽트 핸들러 -> 시스콜 엔트리 -> 시스콜 핸들러 -> 다시 돌아가야해서 복사 뜸 -> 시스템 콜이 그 레지스터를 쓸거라서
+			: "=a" (ret)			//ret(return) 변수가 a 레지스터(rax)와 매핑되어 있으며, syscall의 명령어의 결과가 여기에 저장된다.
+			: "g" (num), "g" (a1), "g" (a2), "g" (a3), "g" (a4), "g" (a5), "g" (a6)//입력 오퍼랜드를 나열
+			: "cc", "memory");		//어셈블리 코드가 flags레지스터와 메모리를 수정할 수 있다는 것을 컴파일러에게 알린다.
+	return ret;						//return 값을 반환한다.
 }
 
 /* Invokes syscall NUMBER, passing no arguments, and returns the

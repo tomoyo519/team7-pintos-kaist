@@ -98,6 +98,15 @@ struct thread {
 	struct lock* wait_on_lock;
 	struct list lock_list;
 	int64_t thread_tick_count;
+	/*-------------------project2------------------------------*/
+	struct list child_list;				//fork 할때마다 child 리스트에 추가가 되는건지, 정렬해야하는지, child list의 child에도 우선순위가 있는지
+	int creat_flag;						//성공적으로 자식 프로세스를 생성시켰는지 확인하는 플래그
+	int exit_status;					//프로그램의 종료 상태를 나타내는 멤버
+	struct thread *parent_p;			//부모 프로세스 디스크립터 포인터 필드
+	struct file *fdt[128];				//file 정보 file -> inode. open_cnt
+	int next_fd;						//다음 파일 디스크립터 정보(number) 1씩 증가
+
+
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4;                     /* Page map level 4 */
@@ -111,6 +120,10 @@ struct thread {
 	struct intr_frame tf;               /* Information for switching */
 	unsigned magic;                     /* Detects stack overflow. */
 };
+
+/*file descriptor table*/
+//fd_table[fd].f_size 
+
 
 /* If false (default), use round-robin scheduler.
    If true, use multi-level feedback queue scheduler.
