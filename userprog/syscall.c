@@ -12,117 +12,20 @@
 #include <debug.h>
 #include <stddef.h>
 
-//#include <syscall.h>
 #include <stdint.h>
 #include "include/lib/syscall-nr.h"
-
-
-/* Process identifier. */
-typedef int pid_t;
-#define PID_ERROR ((pid_t) -1)
-
-/* Map region identifier. */
-typedef int off_t;
-#define MAP_FAILED ((void *) NULL)
-
-/* Maximum characters in a filename written by readdir(). */
-#define READDIR_MAX_LEN 14
-
-/* Typical return values from main() and arguments to exit(). */
-#define EXIT_SUCCESS 0          /* Successful execution. */
-#define EXIT_FAILURE 1          /* Unsuccessful execution. */
-
-
-__attribute__((always_inline))
-static __inline int64_t syscall (uint64_t num_, uint64_t a1_, uint64_t a2_,
-		uint64_t a3_, uint64_t a4_, uint64_t a5_, uint64_t a6_) {
-	int64_t ret;
-	register uint64_t *num asm ("rax") = (uint64_t *) num_;
-	register uint64_t *a1 asm ("rdi") = (uint64_t *) a1_;
-	register uint64_t *a2 asm ("rsi") = (uint64_t *) a2_;
-	register uint64_t *a3 asm ("rdx") = (uint64_t *) a3_;
-	register uint64_t *a4 asm ("r10") = (uint64_t *) a4_;
-	register uint64_t *a5 asm ("r8") = (uint64_t *) a5_;
-	register uint64_t *a6 asm ("r9") = (uint64_t *) a6_;
-
-	__asm __volatile(
-			"mov %1, %%rax\n"
-			"mov %2, %%rdi\n"
-			"mov %3, %%rsi\n"
-			"mov %4, %%rdx\n"
-			"mov %5, %%r10\n"
-			"mov %6, %%r8\n"
-			"mov %7, %%r9\n"
-			"syscall\n"
-			: "=a" (ret)
-			: "g" (num), "g" (a1), "g" (a2), "g" (a3), "g" (a4), "g" (a5), "g" (a6)
-			: "cc", "memory");
-	return ret;
-}
-
-/* Invokes syscall NUMBER, passing no arguments, and returns the
-   return value as an `int'. */
-#define syscall0(NUMBER) ( \
-		syscall(((uint64_t) NUMBER), 0, 0, 0, 0, 0, 0))
-
-/* Invokes syscall NUMBER, passing argument ARG0, and returns the
-   return value as an `int'. */
-#define syscall1(NUMBER, ARG0) ( \
-		syscall(((uint64_t) NUMBER), \
-			((uint64_t) ARG0), 0, 0, 0, 0, 0))
-/* Invokes syscall NUMBER, passing arguments ARG0 and ARG1, and
-   returns the return value as an `int'. */
-#define syscall2(NUMBER, ARG0, ARG1) ( \
-		syscall(((uint64_t) NUMBER), \
-			((uint64_t) ARG0), \
-			((uint64_t) ARG1), \
-			0, 0, 0, 0))
-
-#define syscall3(NUMBER, ARG0, ARG1, ARG2) ( \
-		syscall(((uint64_t) NUMBER), \
-			((uint64_t) ARG0), \
-			((uint64_t) ARG1), \
-			((uint64_t) ARG2), 0, 0, 0))
-
-#define syscall4(NUMBER, ARG0, ARG1, ARG2, ARG3) ( \
-		syscall(((uint64_t *) NUMBER), \
-			((uint64_t) ARG0), \
-			((uint64_t) ARG1), \
-			((uint64_t) ARG2), \
-			((uint64_t) ARG3), 0, 0))
-
-#define syscall5(NUMBER, ARG0, ARG1, ARG2, ARG3, ARG4) ( \
-		syscall(((uint64_t) NUMBER), \
-			((uint64_t) ARG0), \
-			((uint64_t) ARG1), \
-			((uint64_t) ARG2), \
-			((uint64_t) ARG3), \
-			((uint64_t) ARG4), \
-			0))
-
-
-
-
+#include "threads/init.h"
+#include <string.h>
+#include "include/userprog/process.h"
 
 void syscall_entry (void);
 void syscall_handler (struct intr_frame *);
 
-/*---------------project2-----------------------*/
-void halt (void) NO_RETURN;
-void exit (int status) NO_RETURN;
-pid_t fork (const char *thread_name);
-int exec (const char *file);
-int wait (pid_t);
-bool create (const char *file, unsigned initial_size);
-bool remove (const char *file);
-int open (const char *file);
-int filesize (int fd);
-int read (int fd, void *buffer, unsigned length);
-int write (int fd, const void *buffer, unsigned length);
-void seek (int fd, unsigned position);
-unsigned tell (int fd);
-void close (int fd);
-void power_off(void);
+
+/* An offset within a file.
+ * This is a separate header because multiple headers want this
+ * definition but not any others. */
+typedef int32_t off_t;
 
 /* System call.
  *
@@ -150,155 +53,93 @@ syscall_init (void) {
 			FLAG_IF | FLAG_TF | FLAG_DF | FLAG_IOPL | FLAG_AC | FLAG_NT);
 }
 
-
+//file의 배열을 만들자!
+//128인 이유 몰라 페이지 하나래
+		//fd_table[fd_num] = fd
 
 void
 syscall_handler (struct intr_frame *f UNUSED) {
 	// TODO: Your implementation goes here.
+	//인터럽트 프레임에서 esp를 가져온다.
+	void *esp = f->rsp;
+	int fd;
+
 	switch (f->R.rax)
 	{
 	case SYS_HALT:      //power off! 핀토스를 종료, 강종 느낌
-		halt();
+		//어셈블러로 halt수행하는 방법?
+		//stop
+		power_off();
 		break;
-	case SYS_EXIT:      
-		// exit();			
+	case SYS_EXIT:
+		//1.현재 동작중인 유저 프로그램을 종료
+		//2. 커널에 상태를 리턴하면서 종료
+		struct thread *cur = thread_current(); //kernel 쪽 스레드
+		f -> R.rax = f -> R.rdi;		//syscall num 다 썼으니까 exit status로 덮어 씌워줌. 
+		printf("%s : exit(%d)\n", cur -> name, f->R.rax);
+		thread_exit();
 		break;
 	case SYS_FORK:      
-		// fork();
+		//1.thread_name 이라는 이름을 가진 현재 프로세스의 복제본인 새 프로세스를 만든다
+
+		//2.자식 프로세스의 pid를 반환해야 한다.
 		break;
 	case SYS_EXEC:      
-		// exec();
+		
 		break;
-	case SYS_WAIT:      
-		// wait();
+	case SYS_WAIT:    //made by 유정  
+		//1. 자식의 종료 상태(exit status)를 가져온다
+		// tid_t exit_status = f->R.rdi;
+		// return process_wait(exit_status);
 		break;
 	case SYS_CREATE:      
-		// create();
+		
 		break;
 	case SYS_REMOVE:      
-		// remove();
+		
 		break;
-	case SYS_OPEN:      
-		// open();
+	case SYS_OPEN:      	
+		
 		break;
-	case SYS_FILESIZE:      
-		// filesize();
+	case SYS_FILESIZE:
+		fd = f->R.rdi;
+		file_length(fd);
 		break;
 	case SYS_READ:      
-		// read();
+		
 		break;
 	case SYS_WRITE:      
-		// write();
+		write(f->R.rdi, f->R.rsi, f->R.rdx);
 		break;
 	case SYS_SEEK:      
-		// seek();
+		
 		break;
 	case SYS_TELL:      
-		// tell();
+		
 		break;
 	case SYS_CLOSE:      
-		// close();
+		
 		break;
 	default:
 		break;
 	}
 
-	printf ("system call!\n");
-	thread_exit ();
+	// printf ("system call!\n");
+	// thread_exit ();
 }
 
-void
-halt (void) {
-	syscall0 (SYS_HALT);
-	//power_off() 
-	NOT_REACHED ();
+int write(int fd, const void* buffer, unsigned int size){
+  if(fd==1){
+    putbuf(buffer, size);
+    return size;
+  }
+  return -1;
 }
 
-void
-exit (int status) {
-	syscall1 (SYS_EXIT, status);
-	// if(status == 0){
-	// 	//success
-
-	// }
-	// else{
-	// 	//error
-
-	// }
-	NOT_REACHED ();
-}
-
-pid_t
-fork (const char *thread_name){
-
-	return (pid_t) syscall1 (SYS_FORK, thread_name);
-}
-
-int
-exec (const char *file) {
-	return (pid_t) syscall1 (SYS_EXEC, file);
-}
-
-int
-wait (pid_t pid) {
-	return syscall1 (SYS_WAIT, pid);
-}
-
-bool
-create (const char *file, unsigned initial_size) {
-	return syscall2 (SYS_CREATE, file, initial_size);
-}
-
-bool
-remove (const char *file) {
-	return syscall1 (SYS_REMOVE, file);
-}
-
-int
-open (const char *file) {
-	return syscall1 (SYS_OPEN, file);
-}
-
-int
-filesize (int fd) {
-	return syscall1 (SYS_FILESIZE, fd);
-}
-
-int
-read (int fd, void *buffer, unsigned size) {
-	return syscall3 (SYS_READ, fd, buffer, size);
-}
-
-int
-write (int fd, const void *buffer, unsigned size) {
-	return syscall3 (SYS_WRITE, fd, buffer, size);
-}
-
-void
-seek (int fd, unsigned position) {
-	syscall2 (SYS_SEEK, fd, position);
-}
-
-unsigned
-tell (int fd) {
-	return syscall1 (SYS_TELL, fd);
-}
-
-void
-close (int fd) {
-	syscall1 (SYS_CLOSE, fd);
-}
-
-
-// void
-// power_off (void) {
-// #ifdef FILESYS
-// 	filesys_done ();
-// #endif
-
-// 	// print_stats ();
-
-// 	printf ("Powering off...\n");
-// 	// outw (0x604, 0x2000);               /* Poweroff command for qemu */
-// 	for (;;);
+/* Returns the length, in bytes, of INODE's data. */
+// off_t
+// file_length (int fd) {
+// 	struct thread *cur = thread_current();
+// 	off_t file_size = cur -> fdt->fd_table->file->inode.data.length;
+// 	return file_size;
 // }
