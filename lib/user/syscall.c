@@ -70,7 +70,7 @@ static __inline int64_t syscall (uint64_t num_, uint64_t a1_, uint64_t a2_,
 			0))
 void
 halt (void) {
-	syscall0 (SYS_HALT);
+	syscall0 (SYS_HALT);		//return syscall number 
 	NOT_REACHED ();
 }
 
@@ -80,7 +80,7 @@ exit (int status) {
 	NOT_REACHED ();
 }
 
-pid_t
+pid_t 
 fork (const char *thread_name){
 	return (pid_t) syscall1 (SYS_FORK, thread_name);
 }
@@ -194,3 +194,4 @@ int
 umount (const char *path) {
 	return syscall1 (SYS_UMOUNT, path);
 }
+

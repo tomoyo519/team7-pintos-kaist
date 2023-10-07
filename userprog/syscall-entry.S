@@ -11,7 +11,7 @@ syscall_entry:
 	movq (%r12), %r12
 	movq 4(%r12), %rsp         /* Read ring0 rsp from the tss */
 	/* Now we are in the kernel stack */
-	push $(SEL_UDSEG)      /* if->ss */
+	push $(SEL_UDSEG)      /* if->ss */ // syscall 을 호출하기전에 상태를 스택에 저장하는 과정
 	push %rbx              /* if->rsp */
 	push %r11              /* if->eflags */
 	push $(SEL_UCSEG)      /* if->cs */
@@ -22,7 +22,7 @@ syscall_entry:
 	push %rax
 	movq temp1(%rip), %rbx
 	push %rbx
-	pushq $0
+	pushq $0 /* popq의 반대작업을 수행하여, 레지스터의 값을 스택에 넣는다.*/
 	push %rdx
 	push %rbp
 	push %rdi
@@ -30,7 +30,7 @@ syscall_entry:
 	push %r8
 	push %r9
 	push %r10
-	pushq $0 /* skip r11 */
+	pushq $0 /* skip r11 */ 
 	movq temp2(%rip), %r12
 	push %r12
 	push %r13
@@ -43,11 +43,11 @@ check_intr:
 	jnb no_sti
 	sti                    /* restore interrupt */
 no_sti:
-	movabs $syscall_handler, %r12
-	call *%r12
-	popq %r15
-	popq %r14
-	popq %r13
+	movabs $syscall_handler, %r12 // syscall handler 호출
+	call *%r12 // syscall handler호출
+	popq %r15 /* syscall 핸들러 호출 , 스택의 top을 r15에 저장하고 스택포인터를 8바이트씩 증가시킨다.*/
+	popq %r14 /* 증가시키는것-> 스택에서는 pop 개념*/
+	popq %r13 /* 함수호출 후 원상복귀할때, 이전 상태를 저장해두었던 레지스터 값을 복원하는데 사용*/
 	popq %r12
 	popq %r11
 	popq %r10
@@ -60,12 +60,12 @@ no_sti:
 	popq %rcx
 	popq %rbx
 	popq %rax
-	addq $32, %rsp
+	addq $32, %rsp /*rsp 를 32 바이트 더해줌*/
 	popq %rcx              /* if->rip */
-	addq $8, %rsp
+	addq $8, %rsp /*rsp 를 8바이트 더해줌*/
 	popq %r11              /* if->eflags */
 	popq %rsp              /* if->rsp */
-	sysretq
+	sysretq /* syscall 종료하고 user 공간으로 복귀*/
 
 .section .data
 .globl temp1

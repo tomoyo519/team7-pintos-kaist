@@ -23,6 +23,7 @@ typedef int off_t;
 /* Projects 2 and later. */
 void halt (void) NO_RETURN;
 void exit (int status) NO_RETURN;
+void check_address(void *addr);
 pid_t fork (const char *thread_name);
 int exec (const char *file);
 int wait (pid_t);
@@ -35,8 +36,9 @@ int write (int fd, const void *buffer, unsigned length);
 void seek (int fd, unsigned position);
 unsigned tell (int fd);
 void close (int fd);
-
 int dup2(int oldfd, int newfd);
+/* project 2 */ 
+off_t file_length (struct intr_frame *f);
 
 /* Project 3 and optionally project 4. */
 void *mmap (void *addr, size_t length, int writable, int fd, off_t offset);

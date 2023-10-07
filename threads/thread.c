@@ -68,7 +68,7 @@ static tid_t allocate_tid(void);
 static bool tick_less(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 static bool tick_less_priority_cmp(const struct list_elem *a_, const struct list_elem *b_, void *aux UNUSED);
 static bool ready_list_cmp(const struct list_elem *a_, const struct list_elem *b_,
-		  void *aux UNUSED);
+						   void *aux UNUSED);
 
 /* Returns true if T appears to point to a valid thread. */
 #define is_thread(t) ((t) != NULL && (t)->magic == THREAD_MAGIC)
@@ -195,8 +195,8 @@ tid_t thread_create(const char *name, int priority,
 {
 	struct thread *t;
 	tid_t tid;
-	//function 인자는 thread가 생성되고 이 스레드가 시작할때 실행할 함수이다.
-	ASSERT(function != NULL); //유효한 함수 포인터를 가리키고 있어야 한다
+	// function 인자는 thread가 생성되고 이 스레드가 시작할때 실행할 함수이다.
+	ASSERT(function != NULL); // 유효한 함수 포인터를 가리키고 있어야 한다
 
 	/* Allocate thread. */
 	t = palloc_get_page(PAL_ZERO); // 페이지 할당받아서 스레드를 가리키게 만든다.
@@ -204,7 +204,7 @@ tid_t thread_create(const char *name, int priority,
 		return TID_ERROR;
 
 	/* Initialize thread. */
-	init_thread(t, name, priority); //할당받은 우선순위로 init해준다
+	init_thread(t, name, priority); // 할당받은 우선순위로 init해준다
 	tid = t->tid = allocate_tid();
 
 	/* Call the kernel_thread if it scheduled.
@@ -223,7 +223,8 @@ tid_t thread_create(const char *name, int priority,
 	thread_unblock(t); // ready queue에 넣어준다.
 
 	// running 쓰레드보다 우선순위 더 높으면 yield
-	if (thread_current()->priority < t->priority) {
+	if (thread_current()->priority < t->priority)
+	{
 		thread_yield();
 	}
 
@@ -253,7 +254,7 @@ void make_thread_sleep(int64_t ticks)
 	ASSERT(intr_get_level() == INTR_OFF);
 	// printf("in thread sleep\n");
 	struct thread *t = thread_current();
-	
+
 	// ticks를 어디다 쓸까
 	// 넣을때 정렬해서 넣기
 	//  list_push_back(&blocked_list, &thread_current() -> elem);
@@ -266,18 +267,17 @@ void make_thread_sleep(int64_t ticks)
 	intr_set_level(old_level);
 }
 
-void make_thread_wakeup(int64_t ticks)	
+void make_thread_wakeup(int64_t ticks)
 {
-		
-		// 이렇게 구현하려면 순서대로 정렬해서 넣어줘야힘
-		while (!list_empty(&blocked_list) && list_entry(list_front(&blocked_list), struct thread, elem) -> thread_tick_count <= ticks)
-		{
-			struct thread * t = list_entry(list_pop_front(&blocked_list), struct thread, elem);
-			// list_pop_front(&blocked_list);
-			thread_unblock(t);
-		}
+
+	// 이렇게 구현하려면 순서대로 정렬해서 넣어줘야힘
+	while (!list_empty(&blocked_list) && list_entry(list_front(&blocked_list), struct thread, elem)->thread_tick_count <= ticks)
+	{
+		struct thread *t = list_entry(list_pop_front(&blocked_list), struct thread, elem);
+		// list_pop_front(&blocked_list);
+		thread_unblock(t);
 	}
-		
+}
 
 static bool
 tick_less(const struct list_elem *a_, const struct list_elem *b_,
@@ -291,18 +291,18 @@ tick_less(const struct list_elem *a_, const struct list_elem *b_,
 
 static bool
 tick_less_priority_cmp(const struct list_elem *a_, const struct list_elem *b_,
-		  void *aux UNUSED)
+					   void *aux UNUSED)
 {
 	const struct thread *a = list_entry(a_, struct thread, elem);
 	const struct thread *b = list_entry(b_, struct thread, elem);
 
-	if (a->thread_tick_count == b->thread_tick_count) {
+	if (a->thread_tick_count == b->thread_tick_count)
+	{
 		return a->priority >= b->priority;
 	}
 
 	return a->thread_tick_count < b->thread_tick_count;
 }
-
 
 /* Transitions a blocked thread T to the ready-to-run state.
    This is an error if T is not blocked.  (Use thread_yield() to
@@ -320,13 +320,13 @@ void thread_unblock(struct thread *t)
 
 	ASSERT(is_thread(t));
 
-	old_level = intr_disable();			   // intr_disable return 값이 previous interrupt
-	ASSERT(t->status == THREAD_BLOCKED);   // thread blocked 상태면 다음 줄로 넘어감
+	old_level = intr_disable();			 // intr_disable return 값이 previous interrupt
+	ASSERT(t->status == THREAD_BLOCKED); // thread blocked 상태면 다음 줄로 넘어감
 
 	list_insert_ordered(&ready_list, &t->elem, priority_cmp, NULL);
 	// list_push_back(&ready_list, &t->elem); // ready queue에 해당 스레드의 elem를 넣어줌
-	t->status = THREAD_READY;			   // 상태를 ready로 바꾸고
-	intr_set_level(old_level);			   // 이전 인터럽트 상태로 원상복귀 시켜준다.
+	t->status = THREAD_READY;  // 상태를 ready로 바꾸고
+	intr_set_level(old_level); // 이전 인터럽트 상태로 원상복귀 시켜준다.
 }
 
 /* Returns the name of the running thread. */
@@ -351,6 +351,7 @@ thread_current(void)
 	   recursion can cause stack overflow. */
 	// printf("%d\n", t->status);
 	ASSERT(is_thread(t));
+	printf("😤%s	\n", t->status);
 	ASSERT(t->status == THREAD_RUNNING);
 	// printf("in thread current, next ASSERT(t->status == THREAD_RUNNING)\n");
 	return t;
@@ -389,12 +390,12 @@ void thread_yield(void)
 
 	ASSERT(!intr_context()); // false일때 넘어간다. 처리 중이 아닌 상태여야 넘어간다
 
-	old_level = intr_disable();					  // 인터럽트 비활
-	if (curr != idle_thread)					  // idle thread면 ready 중인 스레드가 없다
+	old_level = intr_disable(); // 인터럽트 비활
+	if (curr != idle_thread)	// idle thread면 ready 중인 스레드가 없다
 		list_insert_ordered(&ready_list, &curr->elem, priority_cmp, NULL);
-		// list_push_back(&ready_list, &curr->elem); // ready queue에 넣는다.
-	do_schedule(THREAD_READY);					  // 뺏기는 과정이 do_schedule 현재 running 중인 thread를 ready queue에 넣어주고, ready queue에 있는 스레드를 실행시킨다.
-	intr_set_level(old_level);					  // 이전 interuppt로 복구
+	// list_push_back(&ready_list, &curr->elem); // ready queue에 넣는다.
+	do_schedule(THREAD_READY); // 뺏기는 과정이 do_schedule 현재 running 중인 thread를 ready queue에 넣어주고, ready queue에 있는 스레드를 실행시킨다.
+	intr_set_level(old_level); // 이전 interuppt로 복구
 }
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
@@ -407,7 +408,7 @@ void thread_set_priority(int new_priority)
 
 	// }
 	// // 소유중인 락의 우선순위 변경
-	
+
 	// // 현재 쓰레드의 우선순위보다 클 때
 	// // 현재 쓰레드의 우선순위 변경
 	// // 소유중인 락의 우선순위 변경
@@ -415,87 +416,97 @@ void thread_set_priority(int new_priority)
 	// // 현재 우선순위 값 확인
 	// // 현재 우선순위 < 새 우선순위
 	// 	// 락 소유X: 그냥 바꾸기
-	// 	// 락 소유O: 
+	// 	// 락 소유O:
 	// // 현재 우선순위 > 새 우선순위
 	// // 현재 우선순위 == 새 우선순위
 
 	// // 락 소유 안했을 때
-	
+
 	// // 락 소유 했을 때
-	
+
 	// 락이 있을 때,
 	// 락의 priority 갱신
-	struct thread* t;
-	struct list_elem* e;
-	struct list* lock_list = &thread_current()->lock_list; 
-	struct list* dons = &thread_current()->donations;
-	struct lock* lock;
+	struct thread *t;
+	struct list_elem *e;
+	struct list *lock_list = &thread_current()->lock_list;
+	struct list *dons = &thread_current()->donations;
+	struct lock *lock;
 
-	for (e = list_begin(lock_list); e != list_end(lock_list); e = list_next(e)) {
-		struct lock* lock = list_entry(e, struct lock, elem);
+	for (e = list_begin(lock_list); e != list_end(lock_list); e = list_next(e))
+	{
+		struct lock *lock = list_entry(e, struct lock, elem);
 		lock->priority = new_priority;
 	}
 
 	// 락 있을 때, 없을 때 공통
 
-
 	// 자기보다 작아질 때,
-	if (thread_current()->priority > new_priority) {
+	if (thread_current()->priority > new_priority)
+	{
 		// 도네 받은 거일 때,
 		// 무시
 
 		// 도네받은 최대 우선순위 구하기
 		int max_priority = -1;
-		for (e = list_begin(dons); e != list_end(dons); e = list_next(e)) {
+		for (e = list_begin(dons); e != list_end(dons); e = list_next(e))
+		{
 			t = list_entry(e, struct thread, d_elem);
-			if (max_priority < t->priority) {
+			if (max_priority < t->priority)
+			{
 				max_priority = t->priority;
 			}
 		}
 
 		// 도네 안받은 거일 때(맥스값보다 자기가 크면 됨, 기부자 없으면 -1, 있는데 이후 set 해줬을 경우도 고려됨)
-		if (thread_current()->priority > max_priority) {
+		if (thread_current()->priority > max_priority)
+		{
 			// 락들의 waiters중 최대값 구하기
 			int max_priority_in_waiters = -1;
-			struct list_elem* ee;
+			struct list_elem *ee;
 
-			for (e = list_begin(lock_list); e != list_end(lock_list); e = list_next(e)) {
+			for (e = list_begin(lock_list); e != list_end(lock_list); e = list_next(e))
+			{
 				lock = list_entry(e, struct lock, elem);
-				struct list* waiters = &lock->semaphore.waiters;
+				struct list *waiters = &lock->semaphore.waiters;
 
-				for (ee = list_begin(waiters); ee != list_end(waiters); ee = list_next(ee)) {
+				for (ee = list_begin(waiters); ee != list_end(waiters); ee = list_next(ee))
+				{
 					t = list_entry(ee, struct thread, elem);
 
-					if (max_priority_in_waiters < t->priority) {
+					if (max_priority_in_waiters < t->priority)
+					{
 						max_priority_in_waiters = t->priority;
 					}
-				} 
+				}
 			}
 
 			// new_priority가 같거나 크면 기부 받을 필요 없음
 
 			// max_priority_in_waiters가 더 큰 경우
-			if (new_priority < max_priority_in_waiters) {
+			if (new_priority < max_priority_in_waiters)
+			{
 				// 기부받기
 				thread_current()->priority = max_priority_in_waiters;
 				list_push_back(dons, &t->d_elem);
 			}
 
-			else if (max_priority_in_waiters == -1) {
+			else if (max_priority_in_waiters == -1)
+			{
 				thread_current()->priority = new_priority;
 			}
 		}
 		// lock들의 waiters 중 가장 큰 애와 new_priority 비교한다
-			// new_priority가 아니면 기부자 
-		// 락들 웨이터스 중 
+		// new_priority가 아니면 기부자
+		// 락들 웨이터스 중
 	}
 
 	// 자기보다 높아질 때,
-	else if (thread_current()->priority < new_priority) {
+	else if (thread_current()->priority < new_priority)
+	{
 		thread_current()->priority = new_priority;
 	}
 	thread_yield();
-	
+
 	// // 자기랑 같을 때,
 	// else {
 	// 	// 기부받은 거면 기부 리스트 삭제
@@ -603,7 +614,7 @@ init_thread(struct thread *t, const char *name, int priority)
 	ASSERT(PRI_MIN <= priority && priority <= PRI_MAX);
 	ASSERT(name != NULL);
 
-	memset(t, 0, sizeof *t);						   // 0으로 초기화하고
+	memset(t, 0, sizeof *t); // 0으로 초기화하고
 	list_init(&t->donations);
 	list_init(&t->lock_list);
 	t->status = THREAD_BLOCKED;						   // blocked 상태로(맨처음 상태가 blocked 상태)
@@ -611,6 +622,17 @@ init_thread(struct thread *t, const char *name, int priority)
 	t->tf.rsp = (uint64_t)t + PGSIZE - sizeof(void *); // 스택 포인터 설정
 	t->priority = priority;
 	t->magic = THREAD_MAGIC; // 스택 오버플로우 판단하는 변수
+
+	// project 2;
+	t->exit_status = -1;
+	t->is_child_create = 0;
+	t->parent_p = NULL;
+	// 현재 스레드가 다음에 할당할 파일 디스크립터 번호
+	// 표준 입력과 출력, 그리고 에러출력을 위한 0,1,2 는 이미 예약되어 있기 때문에 초기값은 2
+	//
+	t->fdt = calloc(FDT_COUNT_LIMIT, sizeof(struct file *));
+	t->next_fd = 2;
+	list_init(&t->child_list);
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
@@ -628,11 +650,12 @@ next_thread_to_run(void)
 }
 
 /* Use iretq to launch the thread */
+/*인터럽트 프레임 (이를 통해 CPU 레지스터들의 상태)를 복원하는 역할을 합니다. 이 함수는 인터럽트가 반환될 때 호출됩니다.*/
 void do_iret(struct intr_frame *tf)
 {
 	__asm __volatile(
-		"movq %0, %%rsp\n"
-		"movq 0(%%rsp),%%r15\n"
+		"movq %0, %%rsp\n"		// C코드에서 입력으로 들어온 tf값으로, 스택 포인터(rsp)에 tf를 저장
+		"movq 0(%%rsp),%%r15\n" //
 		"movq 8(%%rsp),%%r14\n"
 		"movq 16(%%rsp),%%r13\n"
 		"movq 24(%%rsp),%%r12\n"
@@ -647,11 +670,11 @@ void do_iret(struct intr_frame *tf)
 		"movq 96(%%rsp),%%rcx\n"
 		"movq 104(%%rsp),%%rbx\n"
 		"movq 112(%%rsp),%%rax\n"
-		"addq $120,%%rsp\n"
+		"addq $120,%%rsp\n" // 데이터를 120byte만큼 제거(pop)
 		"movw 8(%%rsp),%%ds\n"
 		"movw (%%rsp),%%es\n"
 		"addq $32, %%rsp\n"
-		"iretq"
+		"iretq" // tf상에서
 		: : "g"((uint64_t)tf) : "memory");
 }
 
@@ -801,7 +824,7 @@ allocate_tid(void)
 }
 
 bool priority_cmp(const struct list_elem *a_, const struct list_elem *b_,
-		  void *aux UNUSED)
+				  void *aux UNUSED)
 {
 	const struct thread *a = list_entry(a_, struct thread, elem);
 	const struct thread *b = list_entry(b_, struct thread, elem);
@@ -810,7 +833,7 @@ bool priority_cmp(const struct list_elem *a_, const struct list_elem *b_,
 }
 
 bool priority_cmp_for_done_max(const struct list_elem *a_, const struct list_elem *b_,
-		  void *aux UNUSED)
+							   void *aux UNUSED)
 {
 	const struct thread *a = list_entry(a_, struct thread, d_elem);
 	const struct thread *b = list_entry(b_, struct thread, d_elem);
@@ -819,7 +842,7 @@ bool priority_cmp_for_done_max(const struct list_elem *a_, const struct list_ele
 }
 
 bool priority_cmp_for_waiters_max(const struct list_elem *a_, const struct list_elem *b_,
-		  void *aux UNUSED)
+								  void *aux UNUSED)
 {
 	const struct thread *a = list_entry(a_, struct thread, elem);
 	const struct thread *b = list_entry(b_, struct thread, elem);
@@ -827,9 +850,9 @@ bool priority_cmp_for_waiters_max(const struct list_elem *a_, const struct list_
 	return a->priority < b->priority;
 }
 
-// 
+//
 bool priority_cmp_for_cond_waiters_max(const struct list_elem *a_, const struct list_elem *b_,
-		  void *aux UNUSED)
+									   void *aux UNUSED)
 {
 	// a_로부터 semaphore_elem을 찾고, semaphore_elem->holder로 쓰레드 접근 후 우선순위 뽑아내기
 	const struct thread *a = list_entry(a_, struct semaphore_elem, elem)->holder;
@@ -838,32 +861,36 @@ bool priority_cmp_for_cond_waiters_max(const struct list_elem *a_, const struct 
 	return a->priority > b->priority;
 }
 
-void sort_ready_list(void) {
+void sort_ready_list(void)
+{
 	list_sort(&ready_list, priority_cmp, NULL);
 }
 
-void print_ready_list(void) {
-	struct list_elem* e;
+void print_ready_list(void)
+{
+	struct list_elem *e;
 
-	for (e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e)) {
+	for (e = list_begin(&ready_list); e != list_end(&ready_list); e = list_next(e))
+	{
 		printf("elem's val: %d\n", e->val);
 	}
 }
 
 bool ready_list_cmp(const struct list_elem *a_, const struct list_elem *b_,
-		  void *aux UNUSED)
+					void *aux UNUSED)
 {
 
 	return a_->val < b_->val;
 }
 
-void test_list_max(void) {
+void test_list_max(void)
+{
 	struct list_elem elems[4];
 	// for (int i = 0; i < 5; i++) {
 	// 	elems[i].val = i + 1;
 	// 	elems[i].name = i;
 	// }
-	
+
 	elems[0].val = 3;
 	elems[0].name = "e1";
 	elems[1].val = 3;
@@ -881,23 +908,27 @@ void test_list_max(void) {
 	// list_push_back(&ready_list, &elems[0]);
 	// list_push_back(&ready_list, &elems[1]);
 
-	struct list_elem* e = list_max(&ready_list, ready_list_cmp, NULL);
+	struct list_elem *e = list_max(&ready_list, ready_list_cmp, NULL);
 	int a = 12;
 }
 
-struct thread* get_thread(struct list_elem* e) {
+struct thread *get_thread(struct list_elem *e)
+{
 	return list_entry(e, struct thread, elem);
 }
 
-struct thread* get_d_thread(struct list_elem* e) {
+struct thread *get_d_thread(struct list_elem *e)
+{
 	return list_entry(e, struct thread, d_elem);
 }
 
-struct thread* get_cond_thread(struct list_elem* e) {
+struct thread *get_cond_thread(struct list_elem *e)
+{
 	return list_entry(e, struct semaphore_elem, elem)->holder;
 }
 
-void thread_preemption (void){
-    if (!list_empty (&ready_list) && thread_current ()->priority < list_entry (list_front (&ready_list), struct thread, elem)->priority)
-        thread_yield ();
+void thread_preemption(void)
+{
+	if (!intr_context() && !list_empty(&ready_list) && thread_current()->priority < list_entry(list_front(&ready_list), struct thread, elem)->priority)
+		thread_yield();
 }
