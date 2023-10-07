@@ -207,7 +207,7 @@ int process_exec(void *f_name)
 
 	/* And then load the binary */
 	success = load(sub_filename, &_if);
-	ASSERT(success);
+
 	// load 다음에 USER_STACK 주소에 접근을 해야 올바른 접근이다.
 
 	// // 1. 유저 스택에 인자값 자체 역순으로 넣기
@@ -270,13 +270,14 @@ void argument_stack(char **parse, int count, void **esp)
  *
  * This function will be implemented in problem 2-2.  For now, it
  * does nothing. */
+// 자식 프로세스가 종료될 때까지 부모 프로세스 대기
 int process_wait(tid_t child_tid UNUSED)
 {
 	/* XXX: Hint) The pintos exit if process_wait (initd), we recommend you
 	 * XXX:       to add infinite loop here before
 	 * XXX:       implementing the process_wait. */
 	// return -1;
-	for (int i = 0; i < 9999; i++)
+	while (child_tid != TID_ERROR)
 	{
 		;
 	}

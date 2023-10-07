@@ -351,6 +351,7 @@ thread_current(void)
 	   recursion can cause stack overflow. */
 	// printf("%d\n", t->status);
 	ASSERT(is_thread(t));
+	printf("😤%s	\n", t->status);
 	ASSERT(t->status == THREAD_RUNNING);
 	// printf("in thread current, next ASSERT(t->status == THREAD_RUNNING)\n");
 	return t;
@@ -621,12 +622,17 @@ init_thread(struct thread *t, const char *name, int priority)
 	t->tf.rsp = (uint64_t)t + PGSIZE - sizeof(void *); // 스택 포인터 설정
 	t->priority = priority;
 	t->magic = THREAD_MAGIC; // 스택 오버플로우 판단하는 변수
-	// todo :왜 ? 
-	t->exit_status = 0;
+
+	// project 2;
+	t->exit_status = -1;
+	t->is_child_create = 0;
+	t->parent_p = NULL;
 	// 현재 스레드가 다음에 할당할 파일 디스크립터 번호
-	//표준 입력과 출력, 그리고 에러출력을 위한 0,1,2 는 이미 예약되어 있기 때문에 초기값은 2
-	// 
+	// 표준 입력과 출력, 그리고 에러출력을 위한 0,1,2 는 이미 예약되어 있기 때문에 초기값은 2
+	//
+	t->fdt = calloc(FDT_COUNT_LIMIT, sizeof(struct file *));
 	t->next_fd = 2;
+	list_init(&t->child_list);
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should

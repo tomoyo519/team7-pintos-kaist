@@ -150,6 +150,8 @@ void syscall_handler(struct intr_frame *f UNUSED)
 {
 	// int syscall_n = f->R.rax; // 시스템 콜 넘버;
 	struct thread *curr = thread_current();
+	void *esp = f->rsp;
+	int fd;
 	// TODO: Your implementation goes here.
 	switch (f->R.rax)
 	{
@@ -259,6 +261,7 @@ bool remove(const char *file)
 
 int open(const char *file_name)
 {
+	//여기서 Lock 관리를 해주라고...?
 	check_address(file_name);
 	struct file *curr_file = filesys_open(file_name);
 	if (curr_file == NULL)

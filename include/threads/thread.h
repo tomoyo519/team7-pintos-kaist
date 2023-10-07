@@ -99,10 +99,13 @@ struct thread
 	struct lock *wait_on_lock;
 	struct list lock_list;
 	int64_t thread_tick_count;
-
-	int exit_status;
-	struct file **fdt;
-	int next_fd;
+	/* for project 2 */
+	int exit_status;		 // 프로세스의 종료 상태
+	struct list child_list;	 // fork 할때마다 child 리스트 추가가 되는건지? 정렬해야하나? child list의 child에도 우선순위가 있는지?
+	int is_child_create;	 // 성공적으로 자식 프로세스를 생성 시켰는지 확인하는 플래그
+	struct thread *parent_p; // 부모 프로세스 디스크립터 포인터
+	struct file **fdt;		 // 파일 디스크립터 테이블
+	int next_fd;			 // 다음에 할당될 파일 디스크립터 번호. 1씩 증가.
 
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */

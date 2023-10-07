@@ -8,6 +8,9 @@
 #include "threads/mmu.h"
 #include "intrinsic.h"
 
+// memory management unit 의 기능을 시뮬레이션
+// mmu는 cpu와 물리 메모리 사이에 위치하여 주소변환, 메모리 보호, 캐싱 등의 기능을 수행.
+
 static uint64_t *
 pgdir_walk (uint64_t *pdp, const uint64_t va, int create) {
 	int idx = PDX (va);
