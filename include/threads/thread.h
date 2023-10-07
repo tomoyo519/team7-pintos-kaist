@@ -103,7 +103,9 @@ struct thread
 	int exit_status;
 	struct file **fdt;
 	int next_fd;
-
+	int create_flag;
+	struct thread *parent_p;
+	struct list child_list;
 #ifdef USERPROG
 	/* Owned by userprog/process.c. */
 	uint64_t *pml4; /* Page map level 4 */

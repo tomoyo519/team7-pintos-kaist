@@ -622,7 +622,7 @@ init_thread(struct thread *t, const char *name, int priority)
 	t->tf.rsp = (uint64_t)t + PGSIZE - sizeof(void *); // 스택 포인터 설정
 	t->priority = priority;
 	t->magic = THREAD_MAGIC; // 스택 오버플로우 판단하는 변수
-	t->creat_flag = 0;
+	t->create_flag = 0;
 	t->exit_status = -1;
 	// for ()
 	// t->fdt[] = ;
