@@ -606,11 +606,18 @@ init_thread(struct thread *t, const char *name, int priority)
 	memset(t, 0, sizeof *t);						   // 0으로 초기화하고
 	list_init(&t->donations);
 	list_init(&t->lock_list);
+	list_init(&t->child_list);
 	t->status = THREAD_BLOCKED;						   // blocked 상태로(맨처음 상태가 blocked 상태)
 	strlcpy(t->name, name, sizeof t->name);			   // 인자로 받은 이름을 스레드 이름으로 하는것
 	t->tf.rsp = (uint64_t)t + PGSIZE - sizeof(void *); // 스택 포인터 설정
 	t->priority = priority;
 	t->magic = THREAD_MAGIC; // 스택 오버플로우 판단하는 변수
+	t->creat_flag = 0;
+	t->exit_status = -1;
+	// for ()
+	// t->fdt[] = ;
+	t->next_fd = 2;
+	t->parent_p = NULL;
 }
 
 /* Chooses and returns the next thread to be scheduled.  Should
