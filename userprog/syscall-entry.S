@@ -22,7 +22,7 @@ syscall_entry:
 	push %rax
 	movq temp1(%rip), %rbx
 	push %rbx
-	pushq $0
+	pushq $0 /* popq의 반대작업을 수행하여, 레지스터의 값을 스택에 넣는다.*/
 	push %rdx
 	push %rbp
 	push %rdi
@@ -45,9 +45,9 @@ check_intr:
 no_sti:
 	movabs $syscall_handler, %r12
 	call *%r12
-	popq %r15
-	popq %r14
-	popq %r13
+	popq %r15 /* syscall 핸들러 호출 , 스택의 top을 r15에 저장하고 스택포인터를 8바이트씩 증가시킨다.*/
+	popq %r14 /* 증가시키는것-> 스택에서는 pop 개념*/
+	popq %r13 /* 함수호출 후 원상복귀할때, 이전 상태를 저장해두었던 레지스터 값을 복원하는데 사용*/
 	popq %r12
 	popq %r11
 	popq %r10
